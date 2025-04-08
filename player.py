@@ -2,7 +2,7 @@ import pygame
 
 class Player:
     def __init__(self, x, y):
-        self.size = 32  # Adjust if GIFs weren’t 32x32
+        self.size = 48  # Was 32, now 48—50% bigger
         self.sprites = {
             "back": [pygame.transform.scale(pygame.image.load(f"assets/syb1_bk{i}.png").convert_alpha(), (self.size, self.size)) for i in range(1, 3)],
             "front": [pygame.transform.scale(pygame.image.load(f"assets/syb1_fr{i}.png").convert_alpha(), (self.size, self.size)) for i in range(1, 3)],
@@ -11,7 +11,7 @@ class Player:
         }
         self.current_sprite = self.sprites["front"][0]
         self.rect = self.current_sprite.get_rect(topleft=(x, y))
-        self.speed = 5
+        self.speed = 3  # Was 5, now 3—slower movement
         self.direction = "front"
         self.frame = 0
         self.animation_speed = 0.2
