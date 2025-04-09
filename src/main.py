@@ -3,6 +3,7 @@ import sys
 import os
 from player import Player
 from world import World
+from enemy import Enemy
 
 # Get the project root directory
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -11,8 +12,8 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 pygame.init()
 
 # Constants
-WINDOW_WIDTH = 640  # 20 tiles * 32 pixels
-WINDOW_HEIGHT = 480  # 15 tiles * 32 pixels
+WINDOW_WIDTH = 640
+WINDOW_HEIGHT = 480
 FPS = 60
 
 # Set up the display
@@ -20,7 +21,7 @@ screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SCALED)
 pygame.display.set_caption("Syb's Zelda Game")
 clock = pygame.time.Clock()
 
-# Initialize joystick (for gamepad support)
+# Initialize joystick
 pygame.joystick.init()
 joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
 for joystick in joysticks:
@@ -29,7 +30,13 @@ for joystick in joysticks:
 
 # Create the world and player
 world = World()
-player = Player(WINDOW_WIDTH // 2 - 24, WINDOW_HEIGHT // 2 - 24, world)  # Start in the center of room 1
+player = Player(WINDOW_WIDTH // 2 - 24, WINDOW_HEIGHT // 2 - 24, world)
+
+# Spawn the skeleton in room 1
+enemies = []
+if world.current_room_index == 0:
+    skeleton = Enemy(200, 200, "skeleton", world)
+    enemies.append(skeleton)
 
 # Font for FPS display
 font = pygame.font.Font(None, 36)
@@ -37,7 +44,6 @@ font = pygame.font.Font(None, 36)
 # Main game loop
 running = True
 while running:
-    # Event handling
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -47,52 +53,48 @@ while running:
             elif event.key == pygame.K_SPACE:
                 player.shoot_fireball()
         elif event.type == pygame.JOYBUTTONDOWN:
-            if event.button == 0:  # Button "A" on Logitech Dual Action
+            if event.button == 0:
                 player.shoot_fireball()
 
-    # Get keyboard and joystick input
     keys = pygame.key.get_pressed()
-    # Get gamepad input (left analog stick)
     joystick_vx, joystick_vy = 0, 0
     if joysticks:
         joystick = joysticks[0]
-        joystick_vx = joystick.get_axis(0)  # Left/Right (X-axis)
-        joystick_vy = joystick.get_axis(1)  # Up/Down (Y-axis)
-        # Apply deadzone to avoid drift
+        joystick_vx = joystick.get_axis(0)
+        joystick_vy = joystick.get_axis(1)
         deadzone = 0.2
         if abs(joystick_vx) < deadzone:
             joystick_vx = 0
         if abs(joystick_vy) < deadzone:
             joystick_vy = 0
-        # Scale joystick input to match keyboard speed
         joystick_vx *= player.speed
         joystick_vy *= player.speed
 
-    # Combine keyboard and joystick input
     if joystick_vx != 0 or joystick_vy != 0:
-        # Use joystick input if present
         player.move_with_velocity(joystick_vx, joystick_vy, WINDOW_WIDTH, WINDOW_HEIGHT)
     else:
-        # Otherwise use keyboard input
         player.move(keys, WINDOW_WIDTH, WINDOW_HEIGHT)
 
     # Update
     player.update_fireballs(WINDOW_WIDTH, WINDOW_HEIGHT)
+    if world.current_room_index == 0:
+        for enemy in enemies:
+            enemy.update(WINDOW_WIDTH, WINDOW_HEIGHT)
 
     # Draw
-    screen.fill((255, 255, 255))  # White background
-    world.draw(screen)  # Draw the tile map
-    player.draw(screen)  # Draw the player on top
-    # Display FPS
+    screen.fill((255, 255, 255))
+    world.draw(screen)
+    if world.current_room_index == 0:
+        for enemy in enemies:
+            enemy.draw(screen)
+    player.draw(screen)
     fps = str(int(clock.get_fps()))
     fps_text = font.render(fps, True, (255, 255, 255))
     fps_rect = fps_text.get_rect(topright=(WINDOW_WIDTH - 10, 10))
     screen.blit(fps_text, fps_rect)
     pygame.display.flip()
 
-    # Control frame rate
     clock.tick(FPS)
 
-# Quit Pygame
 pygame.quit()
 sys.exit()
