@@ -6,7 +6,8 @@ import os
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 class Player:
-    def __init__(self, x, y):
+    def __init__(self, x, y, world):
+        self.world = world  # Store the world object for collision and door checks
         self.size = 48
         # Load Syb's sprites
         self.sprites = {
@@ -22,9 +23,19 @@ class Player:
         self.frame = 0
         self.animation_speed = 0.2
         self.fireballs = []
-        # Load new fireball sprite sheet
+        # Load final fireball sprite sheet with error handling
         fireball_path = os.path.join(PROJECT_ROOT, "assets/projectiles/fireball_splash_sheet_final.png")
+        print(f"Attempting to load fireball sprite sheet from: {fireball_path}")
+        if not os.path.exists(fireball_path):
+            raise FileNotFoundError(f"Fireball sprite sheet not found at: {fireball_path}")
         self.fireball_sheet = pygame.image.load(fireball_path).convert_alpha()
+        # Verify dimensions
+        expected_width = 256  # 8 frames * 32 pixels
+        expected_height = 32
+        actual_width, actual_height = self.fireball_sheet.get_width(), self.fireball_sheet.get_height()
+        if (actual_width, actual_height) != (expected_width, expected_height):
+            raise ValueError(f"Fireball sprite sheet dimensions are {actual_width}x{actual_height}, expected {expected_width}x{expected_height}")
+        print(f"Fireball sprite sheet loaded, dimensions: {actual_width}x{actual_height}")
         self.fireball_frame_width = 32
         self.fireball_frame_height = 32
         self.fireball_sprites = []
@@ -46,9 +57,6 @@ class Player:
         self.fireball_animation_speed = 0.3  # Faster animation for fireball
         self.explosion_animation_speed = 0.2  # Slightly slower for explosion
         self.explosions = []
-        # Debug: Print loaded frames
-        print(f"Loaded {len(self.fireball_sprites)} fireball frames")
-        print(f"Loaded {len(self.explosion_sprites)} explosion frames")
 
     def move(self, keys, window_width, window_height):
         vx, vy = 0, 0
@@ -72,13 +80,44 @@ class Player:
             vx = vx * self.speed / length
             vy = vy * self.speed / length
 
+        # Calculate new position
         new_x = self.rect.x + vx
         new_y = self.rect.y + vy
-        print(f"Attempting to move to: ({new_x}, {new_y})")
-        if 0 <= new_x <= window_width - self.size:
+
+        # Check for collisions with walls
+        can_move = True
+        # Test the four corners of the player's rect after movement
+        if self.world.is_wall(new_x, new_y):
+            can_move = False
+        if self.world.is_wall(new_x + self.size - 1, new_y):
+            can_move = False
+        if self.world.is_wall(new_x, new_y + self.size - 1):
+            can_move = False
+        if self.world.is_wall(new_x + self.size - 1, new_y + self.size - 1):
+            can_move = False
+
+        # Check for door interaction (center of player)
+        door_transition = None
+        if self.world.is_door(new_x + self.size // 2, new_y + self.size // 2):
+            current_room = self.world.current_room_index
+            if current_room == 0:  # Room 1
+                door_transition = (1, (2 * self.world.tile_size, 7 * self.world.tile_size))  # Go to room 2, position (2,7)
+            elif current_room == 1:  # Room 2
+                door_transition = (0, (2 * self.world.tile_size, 7 * self.world.tile_size))  # Go to room 1, position (2,7)
+
+        # Update position if no collision
+        if can_move and 0 <= new_x <= window_width - self.size and 0 <= new_y <= window_height - self.size:
             self.rect.x = new_x
-        if 0 <= new_y <= window_height - self.size:
             self.rect.y = new_y
+
+        # Handle door transition
+        if door_transition:
+            new_room_index, (new_x, new_y) = door_transition
+            self.world.switch_room(new_room_index)
+            self.rect.x = new_x
+            self.rect.y = new_y
+            print(f"Transitioned to room {new_room_index + 1}, player position: ({self.rect.x}, {self.rect.y})")
+
         print(f"Player position: ({self.rect.x}, {self.rect.y})")
 
         if vx < 0:
@@ -104,13 +143,60 @@ class Player:
     def move_with_velocity(self, vx, vy, window_width, window_height):
         moving = False
 
+        # Calculate new position
         new_x = self.rect.x + vx
         new_y = self.rect.y + vy
-        print(f"Attempting to move to (gamepad): ({new_x}, {new_y})")
-        if 0 <= new_x <= window_width - self.size:
+
+        # Check for collisions with walls
+        can_move = True
+        if self.world.is_wall(new_x, new_y):
+            can_move = False
+        if self.world.is_wall(new_x + self.size - 1, new_y):
+            can_move = False
+        if self.world.is_wall(new_x, new_y + self.size - 1):
+            can_move = False
+        if self.world.is_wall(new_x + self.size - 1, new_y + self.size - 1):
+            can_move = False
+
+# Check for door interaction (trigger when near the door)
+        door_transition = None
+        player_center_x = new_x + self.size // 2
+        player_center_y = new_y + self.size // 2
+        # Convert player center to tile coordinates
+        col = int(player_center_x // self.world.tile_size)
+        row = int(player_center_y // self.world.tile_size)
+        # Check if the tile at (col, row) is a door
+        if 0 <= row < self.world.map_height and 0 <= col < self.world.map_width:
+            if self.world.tile_map[row][col] == 2:  # Door tile
+                current_room = self.world.current_room_index
+                if current_room == 0:  # Room 1
+                    # Transition to room 2, position Syb in front of the door at (1,7)
+                    door_x = 1 * self.world.tile_size
+                    door_y = 7 * self.world.tile_size
+                    # Position Syb to the right of the door (since door is on left wall of room 2)
+                    new_player_x = door_x + self.world.tile_size  # One tile to the right
+                    new_player_y = door_y + (self.world.tile_size - self.size) // 2  # Center vertically
+                    door_transition = (1, (new_player_x, new_player_y))
+                elif current_room == 1:  # Room 2
+                    # Transition to room 1, position Syb in front of the door at (18,7)
+                    door_x = 18 * self.world.tile_size
+                    door_y = 7 * self.world.tile_size
+                    # Position Syb to the left of the door (since door is on right wall of room 1)
+                    new_player_x = door_x - self.size  # One tile to the left
+                    new_player_y = door_y + (self.world.tile_size - self.size) // 2  # Center vertically
+                    door_transition = (0, (new_player_x, new_player_y))
+
+        if can_move and 0 <= new_x <= window_width - self.size and 0 <= new_y <= window_height - self.size:
             self.rect.x = new_x
-        if 0 <= new_y <= window_height - self.size:
             self.rect.y = new_y
+
+        if door_transition:
+            new_room_index, (new_x, new_y) = door_transition
+            self.world.switch_room(new_room_index)
+            self.rect.x = new_x
+            self.rect.y = new_y
+            print(f"Transitioned to room {new_room_index + 1}, player position: ({self.rect.x}, {self.rect.y})")
+
         print(f"Player position (gamepad): ({self.rect.x}, {self.rect.y})")
 
         if vx < 0:
