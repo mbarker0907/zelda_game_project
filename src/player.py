@@ -2,20 +2,19 @@ import pygame
 import math
 import os
 
-# Get the project root directory (one level up from src/)
+# Get the project root directory
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 class Player:
     def __init__(self, x, y):
         self.size = 48
-        # Temporarily use a placeholder sprite (solid color square) until Syb's sprites are added
-        self.placeholder_sprite = pygame.Surface((self.size, self.size))
-        self.placeholder_sprite.fill((255, 0, 255))  # Magenta square as placeholder
+        # Load Syb's sprites
         self.sprites = {
-            "back": [pygame.transform.scale(pygame.image.load(os.path.join(PROJECT_ROOT, f"assets/player/syb1_bk{i}.png")).convert_alpha(), (self.size, self.size)) for i in range(1, 3)],            
-            "front": [pygame.transform.scale(pygame.image.load(os.path.join(PROJECT_ROOT, f"assets/player/syb1_fr{i}.png")).convert_alpha(), (self.size, self.size)) for i in range(1, 3)],            
-            "left": [pygame.transform.scale(pygame.image.load(os.path.join(PROJECT_ROOT, f"assets/player/syb1_lf{i}.png")).convert_alpha(), (self.size, self.size)) for i in range(1, 3)],            
-            "right": [pygame.transform.scale(pygame.image.load(os.path.join(PROJECT_ROOT, f"assets/player/syb1_rt{i}.png")).convert_alpha(), (self.size, self.size)) for i in range(1, 3)]        }
+            "back": [pygame.transform.scale(pygame.image.load(os.path.join(PROJECT_ROOT, f"assets/player/syb1_bk{i}.png")).convert_alpha(), (self.size, self.size)) for i in range(1, 3)],
+            "front": [pygame.transform.scale(pygame.image.load(os.path.join(PROJECT_ROOT, f"assets/player/syb1_fr{i}.png")).convert_alpha(), (self.size, self.size)) for i in range(1, 3)],
+            "left": [pygame.transform.scale(pygame.image.load(os.path.join(PROJECT_ROOT, f"assets/player/syb1_lf{i}.png")).convert_alpha(), (self.size, self.size)) for i in range(1, 3)],
+            "right": [pygame.transform.scale(pygame.image.load(os.path.join(PROJECT_ROOT, f"assets/player/syb1_rt{i}.png")).convert_alpha(), (self.size, self.size)) for i in range(1, 3)]
+        }
         self.current_sprite = self.sprites["front"][0]
         self.rect = self.current_sprite.get_rect(topleft=(x, y))
         self.speed = 3
@@ -23,30 +22,38 @@ class Player:
         self.frame = 0
         self.animation_speed = 0.2
         self.fireballs = []
-        # Load fireball sprite sheet
-        fireball_path = os.path.join(PROJECT_ROOT, "assets/projectiles/fireball_sheet.png")
+        # Load new fireball sprite sheet
+        fireball_path = os.path.join(PROJECT_ROOT, "assets/projectiles/fireball_splash_sheet_final.png")
         self.fireball_sheet = pygame.image.load(fireball_path).convert_alpha()
         self.fireball_frame_width = 32
         self.fireball_frame_height = 32
         self.fireball_sprites = []
-        self.explosion_sprite = None
-        # Extract frames (7 fireball frames + 1 explosion)
+        self.explosion_sprites = []
+        # Extract frames (5 fireball frames + 3 explosion frames)
         for i in range(8):
             frame = self.fireball_sheet.subsurface((i * self.fireball_frame_width, 0, self.fireball_frame_width, self.fireball_frame_height))
-            if i < 7:  # Fireball frames
-                self.fireball_sprites.append(frame)  # No scaling, keep at 32x32
-            else:  # Explosion frame (last one)
-                self.explosion_sprite = pygame.transform.scale(frame, (48, 48))  # Make explosion slightly larger
-        self.fireball_size = 32  # Update size to match
-        self.explosion_size = 48
-        self.fireball_animation_speed = 0.1  # Slower animation for smoother effect
+            if i < 5:  # Fireball frames (0-4)
+                self.fireball_sprites.append(frame)  # Keep at 32x32
+            else:  # Explosion frames (5-7)
+                # Center smaller explosion frames
+                if i == 6:  # Medium explosion (24x24)
+                    frame = pygame.transform.scale(frame, (24, 24))
+                elif i == 7:  # Small explosion (16x16)
+                    frame = pygame.transform.scale(frame, (16, 16))
+                self.explosion_sprites.append(frame)
+        self.fireball_size = 32
+        self.explosion_size = 32  # Base size, adjusted for smaller explosions
+        self.fireball_animation_speed = 0.3  # Faster animation for fireball
+        self.explosion_animation_speed = 0.2  # Slightly slower for explosion
         self.explosions = []
+        # Debug: Print loaded frames
+        print(f"Loaded {len(self.fireball_sprites)} fireball frames")
+        print(f"Loaded {len(self.explosion_sprites)} explosion frames")
 
     def move(self, keys, window_width, window_height):
         vx, vy = 0, 0
         moving = False
 
-        # Debug prints for key presses
         if keys[pygame.K_LEFT]:
             print("Left key pressed")
             vx -= self.speed
@@ -148,7 +155,7 @@ class Player:
             fb["rect"].x += fb["velocity"][0]
             fb["rect"].y += fb["velocity"][1]
             fb["distance"] += abs(fb["velocity"][0]) + abs(fb["velocity"][1])
-            fb["frame"] = (fb["frame"] + self.fireball_animation_speed) % 7
+            fb["frame"] = (fb["frame"] + self.fireball_animation_speed) % 5  # Cycle through 5 fireball frames
             if (fb["rect"].left > window_width or fb["rect"].right < 0 or
                 fb["rect"].top > window_height or fb["rect"].bottom < 0 or
                 fb["distance"] > max_distance):
@@ -161,8 +168,8 @@ class Player:
                 self.fireballs.remove(fb)
 
         for exp in self.explosions[:]:
-            exp["frame"] += 0.3
-            if exp["frame"] >= 1:
+            exp["frame"] += self.explosion_animation_speed
+            if exp["frame"] >= 3:  # Stop after the last explosion frame (0, 1, 2)
                 self.explosions.remove(exp)
 
     def draw(self, screen):
@@ -171,4 +178,14 @@ class Player:
             sprite = self.fireball_sprites[int(fb["frame"])]
             screen.blit(sprite, fb["rect"])
         for exp in self.explosions:
-            screen.blit(self.explosion_sprite, exp["rect"])
+            frame_index = int(exp["frame"])
+            sprite = self.explosion_sprites[frame_index]
+            # Adjust position for smaller explosion frames
+            if frame_index == 1:  # Medium explosion (24x24)
+                offset = (self.explosion_size - 24) // 2
+                screen.blit(sprite, (exp["rect"].x + offset, exp["rect"].y + offset))
+            elif frame_index == 2:  # Small explosion (16x16)
+                offset = (self.explosion_size - 16) // 2
+                screen.blit(sprite, (exp["rect"].x + offset, exp["rect"].y + offset))
+            else:  # Large explosion (32x32)
+                screen.blit(sprite, exp["rect"])
