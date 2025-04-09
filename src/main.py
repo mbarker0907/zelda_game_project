@@ -4,8 +4,14 @@ import os
 from player import Player
 from world import World
 
+
+
 # Get the project root directory
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+# Disable Pygame's default scaling on Windows
+os.environ['SDL_VIDEO_CENTERED'] = '1'
+os.environ['SDL_VIDEODRIVER'] = 'windows'
 
 # Initialize Pygame
 pygame.init()
@@ -15,8 +21,8 @@ WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
 FPS = 60
 
-# Set up the display
-screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+# Set up the display (remove NOFRAME to restore window controls)
+screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SCALED)
 pygame.display.set_caption("Syb's Zelda Game")
 clock = pygame.time.Clock()
 
@@ -30,6 +36,9 @@ for joystick in joysticks:
 # Create the world and player
 world = World()
 player = Player(WINDOW_WIDTH // 2 - 24, WINDOW_HEIGHT // 2 - 24)
+
+# Font for FPS display
+font = pygame.font.Font(None, 36)
 
 # Main game loop
 running = True
@@ -80,6 +89,11 @@ while running:
     screen.fill((255, 255, 255))  # White background
     world.draw(screen)  # Draw the tile map
     player.draw(screen)  # Draw the player on top
+    # Display FPS
+    fps = str(int(clock.get_fps()))
+    fps_text = font.render(fps, True, (255, 255, 255))
+    fps_rect = fps_text.get_rect(topright=(WINDOW_WIDTH - 10, 10))  # Top-right corner
+    screen.blit(fps_text, (10, 10))
     pygame.display.flip()
 
     # Control frame rate
