@@ -13,6 +13,13 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 # Initialize Pygame
 pygame.init()
 
+# Initialize Pygame mixer for audio
+pygame.mixer.init()
+# Load and play background music
+music_path = os.path.join(PROJECT_ROOT, "assets/audio/background_music.mp3")
+pygame.mixer.music.load(music_path)
+pygame.mixer.music.play(-1)  # -1 means loop indefinitely
+
 # Constants
 WINDOW_WIDTH = 640
 WINDOW_HEIGHT = 480
