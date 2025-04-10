@@ -145,12 +145,7 @@ while running:
                 chest.draw(screen)
         player.draw(screen, WINDOW_WIDTH)
 
-        # Draw FPS
-        fps = str(int(clock.get_fps()))
-        fps_text = font.render(fps, True, (0, 0, 0))
-        fps_rect = fps_text.get_rect(topright=(WINDOW_WIDTH - 10, 10))
-        screen.blit(fps_text, fps_rect)
-
+        
     elif game_state == "game_over":
         screen.fill((0, 0, 0))
         game_over_text = font.render("Game Over", True, (255, 0, 0))

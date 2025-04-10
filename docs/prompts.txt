@@ -31,7 +31,7 @@
 # [x] 7. Add enemy-player collision (damage)
 # [x] 8. Add a health bar UI
 # [x] 9. Add destructible bushes
-# [ ] 10. Add a simple quest (defeat enemies to unlock door)
+# [x] 10. Add a simple quest (defeat enemies to unlock door)
 # [ ] 11. Add a treasure chest with an item
 # [ ] 12. Add a locked door requiring a key
 # [ ] 13. Add background music
