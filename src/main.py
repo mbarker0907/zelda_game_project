@@ -5,6 +5,7 @@ from player import Player
 from world import World
 from enemy import Enemy
 from bush import Bush
+from companion import Companion  # New import
 
 # Get the project root directory
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -29,7 +30,7 @@ for joystick in joysticks:
     joystick.init()
     print(f"Gamepad connected: {joystick.get_name()}")
 
-# Font for FPS and game over display
+# Font for game over display
 font = pygame.font.Font(None, 36)
 
 # Game initialization function
@@ -48,12 +49,14 @@ def init_game():
         Bush(6 * world.tile_size, 5 * world.tile_size),
         Bush(7 * world.tile_size, 5 * world.tile_size)
     ]
-    world.initialize_room_objects()  # Spawn chests initially
-    return world, player, enemies, bushes
+    # Spawn the cat companion near the player
+    cat = Companion(player.rect.x + 40, player.rect.y)  # Offset to the right
+    world.initialize_room_objects()
+    return world, player, enemies, bushes, cat
 
 # Initial game setup
-world, player, enemies, bushes = init_game()
-game_state = "playing"  # Start in playing state
+world, player, enemies, bushes, cat = init_game()
+game_state = "playing"
 
 # Main game loop
 running = True
@@ -67,7 +70,7 @@ while running:
             elif game_state == "playing" and event.key == pygame.K_SPACE:
                 player.shoot_fireball()
             elif game_state == "game_over" and event.key == pygame.K_r:
-                world, player, enemies, bushes = init_game()
+                world, player, enemies, bushes, cat = init_game()  # Update restart
                 game_state = "playing"
         elif event.type == pygame.JOYBUTTONDOWN and game_state == "playing":
             if event.button == 0:
@@ -98,6 +101,7 @@ while running:
         # Update game state
         player.update()
         player.update_fireballs(WINDOW_WIDTH, WINDOW_HEIGHT)
+        cat.update(player.rect)  # Update cat to follow player
         if world.current_room_index == 0:
             for enemy in enemies:
                 enemy.update(WINDOW_WIDTH, WINDOW_HEIGHT, player.fireballs)
@@ -106,8 +110,6 @@ while running:
                 if not enemy.is_dying and player_collision_rect.colliderect(enemy_collision_rect):
                     player.take_damage()
             enemies = [enemy for enemy in enemies if not enemy.is_dead()]
-
-            # Update bushes
             for bush in bushes[:]:
                 hit_fireball = bush.check_fireball_collision(player.fireballs)
                 if hit_fireball:
@@ -115,20 +117,16 @@ while running:
                     player.explosions.append(explosion)
                     player.fireballs.remove(hit_fireball)
             bushes = [bush for bush in bushes if not bush.destroyed]
-
-            # Unlock door in room 1
             if len(enemies) == 0 and world.tile_map[7][18] == 3:
                 world.set_tile(7, 18, 2)
                 print("Door unlocked!")
         elif world.current_room_index == 1:
-            # Update chests in room 2
             for chest in world.chests:
                 item = chest.check_collision(player.rect)
                 if item and item not in player.inventory:
                     player.inventory.append(item)
                     print(f"Collected {item}!")
 
-        # Check for game over
         if player.health <= 0:
             game_state = "game_over"
 
@@ -143,9 +141,9 @@ while running:
         elif world.current_room_index == 1:
             for chest in world.chests:
                 chest.draw(screen)
+        cat.draw(screen)  # Draw cat in all rooms
         player.draw(screen, WINDOW_WIDTH)
 
-        
     elif game_state == "game_over":
         screen.fill((0, 0, 0))
         game_over_text = font.render("Game Over", True, (255, 0, 0))
