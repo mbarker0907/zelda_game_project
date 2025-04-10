@@ -31,6 +31,7 @@ for joystick in joysticks:
 # Create the world and player
 world = World()
 player = Player(WINDOW_WIDTH // 2 - 24, WINDOW_HEIGHT // 2 - 24, world)
+world.player = player  # Set the player reference in the world
 
 # Spawn the skeleton in room 1
 enemies = []
@@ -38,7 +39,7 @@ if world.current_room_index == 0:
     skeleton = Enemy(200, 200, "skeleton", world)
     enemies.append(skeleton)
 
-# Font for FPS display
+# Font for FPS and game over display
 font = pygame.font.Font(None, 36)
 
 # Main game loop
@@ -56,6 +57,7 @@ while running:
             if event.button == 0:
                 player.shoot_fireball()
 
+    # Handle input
     keys = pygame.key.get_pressed()
     joystick_vx, joystick_vy = 0, 0
     if joysticks:
@@ -70,26 +72,46 @@ while running:
         joystick_vx *= player.speed
         joystick_vy *= player.speed
 
+    # Move player
     if joystick_vx != 0 or joystick_vy != 0:
         player.move_with_velocity(joystick_vx, joystick_vy, WINDOW_WIDTH, WINDOW_HEIGHT)
     else:
         player.move(keys, WINDOW_WIDTH, WINDOW_HEIGHT)
 
-    # Update
+    # Update game state
+    player.update()  # Update invincibility timer and state
     player.update_fireballs(WINDOW_WIDTH, WINDOW_HEIGHT)
     if world.current_room_index == 0:
         for enemy in enemies:
-            enemy.update(WINDOW_WIDTH, WINDOW_HEIGHT)
+            enemy.update(WINDOW_WIDTH, WINDOW_HEIGHT, player.fireballs)
+            # Use inflated rects for collision detection
+            player_collision_rect = player.rect.inflate(4, 4)
+            enemy_collision_rect = enemy.rect.inflate(4, 4)
+            if not enemy.is_dying and player_collision_rect.colliderect(enemy_collision_rect):
+                player.take_damage()
+        # Remove dead enemies
+        enemies = [enemy for enemy in enemies if not enemy.is_dead()]
 
-    # Draw
-    screen.fill((255, 255, 255))
+    # Check if player is dead
+    if player.health <= 0:
+        screen.fill((0, 0, 0))  # Black background for game over
+        game_over_text = font.render("Game Over", True, (255, 0, 0))  # Red text
+        screen.blit(game_over_text, (WINDOW_WIDTH // 2 - 50, WINDOW_HEIGHT // 2 - 10))
+        pygame.display.flip()
+        pygame.time.wait(2000)  # Wait 2 seconds
+        running = False
+
+    # Draw everything
+    screen.fill((255, 255, 255))  # White background
     world.draw(screen)
     if world.current_room_index == 0:
         for enemy in enemies:
             enemy.draw(screen)
     player.draw(screen)
+
+    # Draw FPS
     fps = str(int(clock.get_fps()))
-    fps_text = font.render(fps, True, (255, 255, 255))
+    fps_text = font.render(fps, True, (0, 0, 0))  # Black for better visibility
     fps_rect = fps_text.get_rect(topright=(WINDOW_WIDTH - 10, 10))
     screen.blit(fps_text, fps_rect)
     pygame.display.flip()

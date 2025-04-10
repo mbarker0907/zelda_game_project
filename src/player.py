@@ -59,6 +59,47 @@ class Player:
         self.explosion_animation_speed = 0.2  # Slightly slower for explosion
         self.explosions = []
 
+        # Health and invincibility
+        self.max_health = 3  # 3 hearts
+        self.health = self.max_health
+        self.invincible = False
+        self.invincibility_timer = 0
+        self.invincibility_duration = 60  # 1 second at 60 FPS
+
+        # Load heart sprite for health display (24x24 for larger hearts)
+        heart_path = os.path.join(PROJECT_ROOT, "assets/ui/heart.png")
+        if not os.path.exists(heart_path):
+            self.heart_sprite = pygame.Surface((24, 24))
+            self.heart_sprite.fill((255, 0, 0))  # Red square as placeholder
+        else:
+            self.heart_sprite = pygame.transform.scale(pygame.image.load(heart_path).convert_alpha(), (24, 24))
+
+    def take_damage(self):
+        """Reduce health by 1 and make the player invincible for 1 second."""
+        if not self.invincible:
+            self.health = max(0, self.health - 1)
+            self.invincible = True
+            self.invincibility_timer = 0
+            print(f"Player took damage! Health: {self.health}")
+            if self.health <= 0:
+                print("Game Over! Player has died.")
+
+    def update(self):
+        """Update invincibility timer and state."""
+        if self.invincible:
+            self.invincibility_timer += 1
+            if self.invincibility_timer >= self.invincibility_duration:
+                self.invincible = False
+                self.invincibility_timer = 0
+                self.current_sprite.set_alpha(255)  # Reset alpha
+            # Add a blinking effect during invincibility
+            if (self.invincibility_timer // 5) % 2 == 0:
+                self.current_sprite.set_alpha(255)
+            else:
+                self.current_sprite.set_alpha(128)  # Semi-transparent for blinking effect
+        else:
+            self.current_sprite.set_alpha(255)  # Ensure full opacity when not invincible
+
     def move(self, keys, window_width, window_height):
         vx, vy = 0, 0
         moving = False
@@ -291,3 +332,14 @@ class Player:
                 sprite = self.explosion_sprites[frame]
                 sprite_rect = sprite.get_rect(center=(exp["x"], exp["y"]))
                 screen.blit(sprite, sprite_rect)
+        # Draw health (hearts) in the top-left corner
+        for i in range(self.max_health):
+            heart_x = 10 + i * (self.heart_sprite.get_width() + 10)  # 10px padding, 10px between hearts
+            heart_y = 10  # 10px from the top
+            if i < self.health:
+                screen.blit(self.heart_sprite, (heart_x, heart_y))
+            else:
+                # Draw an empty heart (semi-transparent)
+                empty_heart = self.heart_sprite.copy()
+                empty_heart.set_alpha(64)  # 25% opacity for empty hearts
+                screen.blit(empty_heart, (heart_x, heart_y))
