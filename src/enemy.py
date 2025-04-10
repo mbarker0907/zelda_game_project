@@ -19,6 +19,13 @@ class Enemy:
         self.direction_timer = 0
         self.direction_interval = 120  # 2 seconds at 60 FPS
 
+        # Health and death state
+        self.health = 3  # Skeleton takes 3 hits to defeat
+        self.is_dying = False  # Flag to indicate if the skeleton is in its death animation
+        self.death_timer = 0  # Timer for the death animation
+        self.death_duration = 60  # 1 second at 60 FPS
+        self.alpha = 255  # Alpha value for fading out during death
+
         # Load the skeleton sprite sheet
         if enemy_type == "skeleton":
             sprite_sheet_path = os.path.join(PROJECT_ROOT, "assets/enemies/skeleton_sheet.png")
@@ -68,7 +75,39 @@ class Enemy:
         else:
             raise ValueError(f"Unsupported enemy type: {enemy_type}")
 
-    def update(self, window_width, window_height):
+    def check_fireball_collision(self, fireballs):
+        """Check for collisions with fireballs and reduce health if hit."""
+        if self.is_dying:
+            return  # Skip collision checks if already dying
+
+        for fireball in fireballs[:]:  # Copy the list to allow modification
+            if not fireball.exploded and self.rect.colliderect(fireball.rect):
+                self.health -= 1
+                # Trigger explosion and add it to the player's explosions list
+                explosion = fireball.explode()
+                self.world.player.explosions.append(explosion)  # Access player via world
+                fireballs.remove(fireball)  # Remove the fireball on hit
+                print(f"Skeleton hit! Health: {self.health}")
+                if self.health <= 0:
+                    self.is_dying = True
+                break  # Exit the loop after a hit to avoid multiple hits in one frame
+
+    def update(self, window_width, window_height, fireballs):
+        # Check for fireball collisions
+        self.check_fireball_collision(fireballs)
+
+        # If dying, play the death animation
+        if self.is_dying:
+            self.death_timer += 1
+            # Fade out by reducing alpha
+            self.alpha = max(0, 255 - (255 * self.death_timer // self.death_duration))
+            # Add a blinking effect: toggle visibility every 5 frames
+            if (self.death_timer // 5) % 2 == 0:
+                self.current_sprite.set_alpha(self.alpha)
+            else:
+                self.current_sprite.set_alpha(0)  # Invisible for a brief moment
+            return  # Skip movement and animation updates while dying
+
         # Update direction timer
         self.direction_timer += 1
         if self.direction_timer >= self.direction_interval:
@@ -138,3 +177,7 @@ class Enemy:
 
     def draw(self, screen):
         screen.blit(self.current_sprite, self.rect)
+
+    def is_dead(self):
+        """Return True if the skeleton has finished its death animation."""
+        return self.is_dying and self.death_timer >= self.death_duration

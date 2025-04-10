@@ -1,6 +1,7 @@
 import pygame
 import math
 import os
+from fireball import Fireball
 
 # Get the project root directory
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -158,7 +159,7 @@ class Player:
         if self.world.is_wall(new_x + self.size - 1, new_y + self.size - 1):
             can_move = False
 
-# Check for door interaction (trigger when near the door)
+        # Check for door interaction (trigger when near the door)
         door_transition = None
         player_center_x = new_x + self.size // 2
         player_center_y = new_y + self.size // 2
@@ -220,39 +221,59 @@ class Player:
             self.current_sprite = self.sprites[self.direction][0]
 
     def shoot_fireball(self):
+        # Determine fireball direction based on the player's current direction
+        vx, vy = 0, 0
         fireball_speed = 5
-        if self.direction == "front":
-            fireball = pygame.Rect(self.rect.centerx - self.fireball_size // 2, self.rect.bottom, self.fireball_size, self.fireball_size)
-            velocity = (0, fireball_speed)
-        elif self.direction == "back":
-            fireball = pygame.Rect(self.rect.centerx - self.fireball_size // 2, self.rect.top - self.fireball_size, self.fireball_size, self.fireball_size)
-            velocity = (0, -fireball_speed)
-        elif self.direction == "left":
-            fireball = pygame.Rect(self.rect.left - self.fireball_size, self.rect.centery - self.fireball_size // 2, self.fireball_size, self.fireball_size)
-            velocity = (-fireball_speed, 0)
+        if self.direction == "left":
+            vx = -fireball_speed
         elif self.direction == "right":
-            fireball = pygame.Rect(self.rect.right, self.rect.centery - self.fireball_size // 2, self.fireball_size, self.fireball_size)
-            velocity = (fireball_speed, 0)
-        self.fireballs.append({"rect": fireball, "velocity": velocity, "distance": 0, "frame": 0})
+            vx = fireball_speed
+        elif self.direction == "back":  # Up
+            vy = -fireball_speed
+        elif self.direction == "front":  # Down
+            vy = fireball_speed
+
+        # Override direction if a key is currently pressed
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_LEFT]:
+            vx, vy = -fireball_speed, 0
+            self.direction = "left"
+        elif keys[pygame.K_RIGHT]:
+            vx, vy = fireball_speed, 0
+            self.direction = "right"
+        elif keys[pygame.K_UP]:
+            vx, vy = 0, -fireball_speed
+            self.direction = "back"
+        elif keys[pygame.K_DOWN]:
+            vx, vy = 0, fireball_speed
+            self.direction = "front"
+
+        # Create a new Fireball object with the player's fireball sprites
+        fireball = Fireball(
+            self.rect.centerx, self.rect.centery, vx, vy,
+            self.fireball_sprites, self.explosion_sprites,
+            self.fireball_animation_speed
+        )
+        self.fireballs.append(fireball)
 
     def update_fireballs(self, window_width, window_height):
-        max_distance = 150
-        for fb in self.fireballs[:]:
-            fb["rect"].x += fb["velocity"][0]
-            fb["rect"].y += fb["velocity"][1]
-            fb["distance"] += abs(fb["velocity"][0]) + abs(fb["velocity"][1])
-            fb["frame"] = (fb["frame"] + self.fireball_animation_speed) % 5  # Cycle through 5 fireball frames
-            if (fb["rect"].left > window_width or fb["rect"].right < 0 or
-                fb["rect"].top > window_height or fb["rect"].bottom < 0 or
-                fb["distance"] > max_distance):
-                explosion_rect = pygame.Rect(
-                    fb["rect"].centerx - self.explosion_size // 2,
-                    fb["rect"].centery - self.explosion_size // 2,
-                    self.explosion_size, self.explosion_size
-                )
-                self.explosions.append({"rect": explosion_rect, "frame": 0})
-                self.fireballs.remove(fb)
+        # Update fireballs and remove those that are off-screen or exploded
+        for fireball in self.fireballs[:]:
+            if fireball.update(window_width, window_height):
+                # Check for collisions with walls
+                if (self.world.is_wall(fireball.rect.x, fireball.rect.y) or
+                    self.world.is_wall(fireball.rect.x + fireball.rect.width - 1, fireball.rect.y) or
+                    self.world.is_wall(fireball.rect.x, fireball.rect.y + fireball.rect.height - 1) or
+                    self.world.is_wall(fireball.rect.x + fireball.rect.width - 1, fireball.rect.y + fireball.rect.height - 1)):
+                    # Fireball hit a wall, trigger explosion
+                    explosion = fireball.explode()
+                    self.explosions.append(explosion)
+                    self.fireballs.remove(fireball)
+            else:
+                # Fireball went off-screen, remove it without explosion
+                self.fireballs.remove(fireball)
 
+        # Update explosions
         for exp in self.explosions[:]:
             exp["frame"] += self.explosion_animation_speed
             if exp["frame"] >= 3:  # Stop after the last explosion frame (0, 1, 2)
@@ -260,18 +281,13 @@ class Player:
 
     def draw(self, screen):
         screen.blit(self.current_sprite, self.rect)
-        for fb in self.fireballs:
-            sprite = self.fireball_sprites[int(fb["frame"])]
-            screen.blit(sprite, fb["rect"])
+        # Draw fireballs
+        for fireball in self.fireballs:
+            fireball.draw(screen)
+        # Draw explosions
         for exp in self.explosions:
-            frame_index = int(exp["frame"])
-            sprite = self.explosion_sprites[frame_index]
-            # Adjust position for smaller explosion frames
-            if frame_index == 1:  # Medium explosion (24x24)
-                offset = (self.explosion_size - 24) // 2
-                screen.blit(sprite, (exp["rect"].x + offset, exp["rect"].y + offset))
-            elif frame_index == 2:  # Small explosion (16x16)
-                offset = (self.explosion_size - 16) // 2
-                screen.blit(sprite, (exp["rect"].x + offset, exp["rect"].y + offset))
-            else:  # Large explosion (32x32)
-                screen.blit(sprite, exp["rect"])
+            frame = int(exp["frame"])
+            if frame < len(self.explosion_sprites):
+                sprite = self.explosion_sprites[frame]
+                sprite_rect = sprite.get_rect(center=(exp["x"], exp["y"]))
+                screen.blit(sprite, sprite_rect)
