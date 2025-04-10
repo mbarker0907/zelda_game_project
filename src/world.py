@@ -14,8 +14,10 @@ class World:
         self.tiles = {
             0: pygame.image.load(os.path.join(PROJECT_ROOT, "assets/tiles/grass.png")).convert_alpha(),  # Grass
             1: pygame.image.load(os.path.join(PROJECT_ROOT, "assets/tiles/wall.png")).convert_alpha(),   # Wall
-            2: pygame.image.load(os.path.join(PROJECT_ROOT, "assets/tiles/door.png")).convert_alpha()   # Door
+            2: pygame.image.load(os.path.join(PROJECT_ROOT, "assets/tiles/door.png")).convert_alpha(),   # Door
+            3: pygame.image.load(os.path.join(PROJECT_ROOT, "assets/tiles/locked_door.png")).convert_alpha()  # Locked Door
         }
+        self.player = None
         # Debug: Print tile dimensions
         for tile_type, tile in self.tiles.items():
             print(f"Tile {tile_type} dimensions: {tile.get_width()}x{tile.get_height()}")
@@ -25,7 +27,7 @@ class World:
                 self.tiles[tile_type] = pygame.transform.scale(self.tiles[tile_type], (self.tile_size, self.tile_size))
 
         # Define room layouts (20x15 tiles each)
-        # Room 1: Starting room with a door at (18,7), surrounded by grass tiles
+        # Room 1: Starting room with a locked door at (18,7), surrounded by grass tiles
         self.room1 = [
             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],  # Row 0
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],  # Row 1
@@ -34,7 +36,7 @@ class World:
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],  # Row 4
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],  # Row 5
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],  # Row 6
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1],  # Row 7 (Door at (18,7))
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 1],  # Row 7 (Locked Door at (18,7))
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],  # Row 8
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],  # Row 9
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],  # Row 10
@@ -83,20 +85,19 @@ class World:
     def draw(self, screen):
         screen.blit(self.map_surface, (self.offset_x, self.offset_y))
 
-    def get_tile(self, x, y):
+    def get_tile_type(self, x, y):
         col = int(x // self.tile_size)
         row = int(y // self.tile_size)
-        print(f"get_tile: x={x}, y={y}, col={col}, row={row}")
         if 0 <= row < self.map_height and 0 <= col < self.map_width:
             return self.tile_map[row][col]
-        return 1
+        return 1  # Default to wall if out of bounds
 
     def is_wall(self, x, y):
-        tile_type = self.get_tile(x, y)
-        return tile_type == 1
+        tile_type = self.get_tile_type(x, y)
+        return tile_type == 1 or tile_type == 3  # Treat locked doors as walls
 
     def is_door(self, x, y):
-        tile_type = self.get_tile(x, y)
+        tile_type = self.get_tile_type(x, y)
         return tile_type == 2
 
     def switch_room(self, new_room_index):
@@ -104,22 +105,7 @@ class World:
         self.tile_map = self.rooms[self.current_room_index]
         self.render_room()
 
-    def generate_random_room(self):
-        new_room = [[0 for _ in range(self.map_width)] for _ in range(self.map_height)]
-        for col in range(self.map_width):
-            new_room[0][col] = 1
-            new_room[self.map_height - 1][col] = 1
-        for row in range(self.map_height):
-            new_room[row][0] = 1
-            new_room[row][self.map_width - 1] = 1
-        for _ in range(10):
-            row = random.randint(1, self.map_height - 2)
-            col = random.randint(1, self.map_width - 2)
-            new_room[row][col] = 1
-        door_side = random.choice(["left", "right"])
-        door_row = random.randint(1, self.map_height - 2)
-        if door_side == "left":
-            new_room[door_row][1] = 2  # Inset door
-        else:
-            new_room[door_row][self.map_width - 2] = 2  # Inset door
-        return new_room
+    def set_tile(self, row, col, tile_type):
+        if 0 <= row < self.map_height and 0 <= col < self.map_width:
+            self.tile_map[row][col] = tile_type
+            self.render_room()  # Re-render the map surface

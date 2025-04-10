@@ -1,0 +1,125 @@
+# Summary of Prompts for Syb’s Zelda Game
+# Purpose: This file contains a list of prompts to guide the development of a Pygame-based game inspired by The Legend of Zelda: A Link to the Past. Each prompt focuses on a single task to build the game step-by-step, starting with core mechanics (movement, combat, world) and progressing to polish (UI, effects, audio). The goal is to create a playable game with Syb as the player, featuring exploration, combat, and simple quests.
+# Usage: Copy and paste each prompt into Grok to receive instructions for that task. Test the result after each prompt, and use follow-up prompts to fix issues (e.g., "The tile map renders incorrectly—fix the layout in `main.py`."). Prompts are ordered to build the game progressively, so follow them in sequence. Adjust file names, sizes, or positions as needed based on your assets.
+
+# Required Assets
+# - `assets/tiles/grass.png` (32x32 pixels)
+# - `assets/tiles/wall.png` (32x32 pixels)
+# - `assets/tiles/door.png` (32x32 pixels)
+# - `assets/tiles/locked_door.png` (32x32 pixels)
+# - `assets/enemies/octorok_sheet.png` (64x32 pixels, 2 frames for walking animation)
+# - `assets/ui/heart_full.png` (16x16 pixels)
+# - `assets/ui/heart_empty.png` (16x16 pixels)
+# - `assets/ui/key.png` (16x16 pixels)
+# - `assets/objects/bush.png` (32x32 pixels)
+# - `assets/objects/chest_closed.png` (32x32 pixels)
+# - `assets/objects/chest_open.png` (32x32 pixels)
+# - `assets/audio/background_music.mp3`
+# - `assets/audio/fireball_shoot.wav`
+# - `assets/audio/explosion.wav`
+# - `assets/audio/enemy_defeat.wav`
+# - `assets/ui/title_background.png` (800x600 pixels)
+
+# Progress Tracker
+# [x] 0. Add fireball animation using sprite sheet
+# [x] 1. Set up the game window and main loop
+# [x] 2. Add a tile map for the game world
+# [x] 3. Add collision detection for walls
+# [x] 4. Add multiple rooms/areas
+# [x] 5. Add an enemy type (Octorok)
+# [x] 6. Add fireball-enemy collision
+# [x] 7. Add enemy-player collision (damage)
+# [x] 8. Add a health bar UI
+# [x] 9. Add destructible bushes
+# [ ] 10. Add a simple quest (defeat enemies to unlock door)
+# [ ] 11. Add a treasure chest with an item
+# [ ] 12. Add a locked door requiring a key
+# [ ] 13. Add background music
+# [ ] 14. Add sound effects
+# [ ] 15. Add a game over screen
+# [ ] 16. Add a title screen
+# [ ] 17. Polish: Add screen shake on explosion
+# [ ] 18. Polish: Add particle effects for bush destruction
+# [ ] 19. Polish: Add a shadow under the player
+# [ ] 20. Polish: Add a fade transition between rooms
+
+# Core Mechanics
+# 0. Add fireball animation using sprite sheet
+"In my Pygame project, add animation for a fireball using a sprite sheet at `assets/projectiles/fireball_sheet.png`. The sheet has 8 frames (7 fireball frames, 1 explosion) in a horizontal strip, each frame is 32x32 pixels. Fireballs should be scaled to 24x24, and the explosion to 32x32. Update `player.py` to animate the fireball while it moves and show the explosion when it disappears."
+
+# 1. Set up the game window and main loop
+"In my Pygame project, set up a game window of 800x600 pixels with a white background. Create a main game loop in `main.py` that runs at 60 FPS, handles quitting the game, and renders the player (from `player.py`) at the center of the screen."
+
+# World
+# 2. Add a tile map for the game world
+"In my Pygame project, add a 20x15 tile map for the game world (each tile 32x32 pixels). Use grass (`grass.png`) and wall (`wall.png`) tiles from `assets/tiles/`. The map should be a grid where 0=grass, 1=wall, using this layout: [[1,1,1,1,...],[1,0,0,1,...],...]. Update `main.py` to render the map behind the player."
+
+# 3. Add collision detection for walls
+"In my Pygame project, add collision detection between the player (`self.rect` in `player.py`) and walls in the tile map (from `main.py`). Walls are where the map has a 1. Prevent the player from moving through walls by checking collisions before updating the player’s position."
+
+# 4. Add multiple rooms/areas
+"In my Pygame project, add support for multiple rooms using tile maps. Create 2 rooms (each 20x15 tiles, 32x32 pixels) with different layouts in `main.py`. Add a door tile (`door.png` in `assets/tiles/`) at position (18,7) in room 1 that transitions to room 2, and a door at (1,7) in room 2 that transitions back to room 1. Update the player’s position to (2,7) when transitioning between rooms."
+
+# Combat
+# 5. Add an enemy type (Octorok)
+"In my Pygame project, add an Octorok enemy that moves left and right. Use a sprite sheet `octorok_sheet.png` from `assets/enemies/`, with 2 frames (32x32 pixels each) for walking animation. The enemy should spawn at (300, 300) in room 1, move at speed 2, and change direction every 2 seconds. Create an `Enemy` class in a new `enemy.py` file and update `main.py` to spawn and render one enemy."
+
+# 6. Add fireball-enemy collision
+"In my Pygame project, add collision detection between fireballs (`self.fireballs` in `player.py`) and enemies (from `enemy.py`). When a fireball hits an enemy, the enemy should disappear, and the fireball should show its explosion animation. Update `main.py` to handle this and remove the fireball on impact."
+
+# 7. Add enemy-player collision (damage)
+"In my Pygame project, add collision detection between the player (`self.rect` in `player.py`) and enemies (from `enemy.py`). The player should have 3 hearts (health). When an enemy collides with the player, reduce health by 1 heart and make the player invincible for 1 second (no further damage during this time). Update `player.py` to track health and invincibility, and `main.py` to handle collisions."
+
+# UI
+# 8. Add a health bar UI
+"In my Pygame project, add a health bar UI to display the player’s health (3 hearts) in the top-left corner of the screen. Use `heart_full.png` and `heart_empty.png` (16x16 pixels each) from `assets/ui/`. Update `main.py` to render the health bar based on the player’s current health (from `player.py`)."
+
+# Objects and Quests
+# 9. Add destructible bushes
+"In my Pygame project, add destructible bushes as interactable objects. Use `bush.png` (32x32 pixels) from `assets/objects/`. Place 3 bushes in room 1 at positions (5,5), (6,5), and (7,5). When a fireball hits a bush, it should disappear. Create a `Bush` class in a new `bush.py` file, update `main.py` to spawn and render bushes, and handle fireball-bush collisions."
+
+# 10. Add a simple quest (defeat enemies to unlock door)
+"In my Pygame project, add a quest in room 1: the door to room 2 (at 18,7) is locked until the player defeats 3 enemies. Spawn 3 Octorok enemies in room 1 at (300,300), (350,300), and (400,300). Track the number of enemies defeated in `main.py`, and unlock the door when all 3 are defeated. Update the door to use a `locked_door.png` sprite until unlocked, then switch to `door.png`."
+
+# 11. Add a treasure chest with an item
+"In my Pygame project, add a treasure chest in room 2 at position (10,7). Use `chest_closed.png` and `chest_open.png` (32x32 pixels) from `assets/objects/`. When the player collides with the chest, it opens and gives a key (display `key.png` in the UI at the top-right corner). Create a `Chest` class in a new `chest.py` file, update `main.py` to spawn and render the chest, and track the key in the player’s inventory."
+
+# 12. Add a locked door requiring a key
+"In my Pygame project, add a locked door in room 2 at position (18,7) that requires a key to open. The door should use `locked_door.png` until the player has a key (from the chest), then switch to `door.png` and allow transition to a new room 3. Update `main.py` to handle the key requirement and add a simple room 3 (20x15 tiles)."
+
+# Audio
+# 13. Add background music
+"In my Pygame project, add background music that loops continuously. Use `background_music.mp3` from `assets/audio/`. Update `main.py` to load and play the music when the game starts."
+
+# 14. Add sound effects
+"In my Pygame project, add sound effects: play `fireball_shoot.wav` when the player shoots a fireball, `explosion.wav` when a fireball explodes, and `enemy_defeat.wav` when an enemy is defeated. All audio files are in `assets/audio/`. Update `player.py` and `main.py` to play the sounds at the appropriate events."
+
+# Game Flow
+# 15. Add a game over screen
+"In my Pygame project, add a game over screen when the player’s health reaches 0. Display a ‘Game Over’ message in the center of the screen using a font (e.g., Arial, size 48), with a ‘Press R to Restart’ option. On restart, reset the player’s health, position, and room to the starting state. Update `main.py` to handle game over and restart."
+
+# 16. Add a title screen
+"In my Pygame project, add a title screen that displays ‘Syb’s Adventure’ in the center (Arial, size 48) and ‘Press Enter to Start’ below it. Use a background image `title_background.png` from `assets/ui/`. Update `main.py` to show the title screen before the game starts, transitioning to the game when Enter is pressed."
+
+# Polish
+# 17. Polish: Add screen shake on explosion
+"In my Pygame project, add a screen shake effect when a fireball explodes. The screen should shake for 0.2 seconds with a 5-pixel offset. Update `main.py` to apply the shake effect to all rendered elements (player, map, enemies, etc.) when an explosion occurs."
+
+# 18. Polish: Add particle effects for bush destruction
+"In my Pygame project, add a particle effect when a bush is destroyed by a fireball. Spawn 5 small green particles (4x4 pixels) that move outward and fade out over 0.5 seconds. Update `bush.py` to create particles and `main.py` to render them."
+
+# 19. Polish: Add a shadow under the player
+"In my Pygame project, add a shadow under the player to give a sense of depth. Use a semi-transparent black oval (16x8 pixels) positioned under the player’s sprite. Update `player.py` to render the shadow before the player sprite in the `draw` method."
+
+# 20. Polish: Add a fade transition between rooms
+"In my Pygame project, add a fade-to-black transition when the player moves between rooms. The screen should fade out over 0.5 seconds, transition the player, then fade in over 0.5 seconds. Update `main.py` to handle the fade effect during room transitions."
+
+# Debugging Prompts
+# "The [feature] isn’t working in my Pygame project. I see [describe issue]. Fix the issue in [file]."
+# "The game crashes with this error: [error message]. Debug the issue in [file]."
+
+# Version Control Reminder
+# After completing each task, commit your changes:
+# git add .
+# git commit -m "Completed task: [task description]"
+# git push origin main

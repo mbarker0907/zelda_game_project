@@ -140,12 +140,15 @@ class Player:
 
         # Check for door interaction (center of player)
         door_transition = None
-        if self.world.is_door(new_x + self.size // 2, new_y + self.size // 2):
+        tile_type = self.world.get_tile_type(new_x + self.size // 2, new_y + self.size // 2)
+        if tile_type == 2:  # Unlocked door
             current_room = self.world.current_room_index
-            if current_room == 0:  # Room 1
-                door_transition = (1, (2 * self.world.tile_size, 7 * self.world.tile_size))  # Go to room 2, position (2,7)
-            elif current_room == 1:  # Room 2
-                door_transition = (0, (2 * self.world.tile_size, 7 * self.world.tile_size))  # Go to room 1, position (2,7)
+            if current_room == 0:  # Room 1 to Room 2
+                door_transition = (1, (2 * self.world.tile_size, 7 * self.world.tile_size))
+            elif current_room == 1:  # Room 2 to Room 1
+                door_transition = (0, (2 * self.world.tile_size, 7 * self.world.tile_size))
+        elif tile_type == 3:  # Locked door (optional feedback)
+            print("The door is locked.")
 
         # Update position if no collision
         if can_move and 0 <= new_x <= window_width - self.size and 0 <= new_y <= window_height - self.size:
@@ -209,7 +212,8 @@ class Player:
         row = int(player_center_y // self.world.tile_size)
         # Check if the tile at (col, row) is a door
         if 0 <= row < self.world.map_height and 0 <= col < self.world.map_width:
-            if self.world.tile_map[row][col] == 2:  # Door tile
+            tile_type = self.world.tile_map[row][col]
+            if tile_type == 2:  # Unlocked door
                 current_room = self.world.current_room_index
                 if current_room == 0:  # Room 1
                     # Transition to room 2, position Syb in front of the door at (1,7)
@@ -227,6 +231,8 @@ class Player:
                     new_player_x = door_x - self.size  # One tile to the left
                     new_player_y = door_y + (self.world.tile_size - self.size) // 2  # Center vertically
                     door_transition = (0, (new_player_x, new_player_y))
+            elif tile_type == 3:  # Locked door (optional feedback)
+                print("The door is locked.")
 
         if can_move and 0 <= new_x <= window_width - self.size and 0 <= new_y <= window_height - self.size:
             self.rect.x = new_x

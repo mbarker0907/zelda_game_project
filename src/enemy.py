@@ -20,60 +20,62 @@ class Enemy:
         self.direction_interval = 120  # 2 seconds at 60 FPS
 
         # Health and death state
-        self.health = 3  # Skeleton takes 3 hits to defeat
-        self.is_dying = False  # Flag to indicate if the skeleton is in its death animation
+        self.health = 3  # Enemies take 3 hits to defeat
+        self.is_dying = False  # Flag to indicate if the enemy is in its death animation
         self.death_timer = 0  # Timer for the death animation
         self.death_duration = 60  # 1 second at 60 FPS
         self.alpha = 255  # Alpha value for fading out during death
 
-        # Load the skeleton sprite sheet
+        # Load the enemy sprite sheet based on type
         if enemy_type == "skeleton":
             sprite_sheet_path = os.path.join(PROJECT_ROOT, "assets/enemies/skeleton_sheet.png")
-            if not os.path.exists(sprite_sheet_path):
-                raise FileNotFoundError(f"Skeleton sprite sheet not found at: {sprite_sheet_path}")
-            self.sprite_sheet = pygame.image.load(sprite_sheet_path).convert_alpha()
-            # Verify dimensions
-            expected_width = 144  # 3 frames wide (48x3)
-            expected_height = 192  # 4 frames tall (48x4)
-            actual_width, actual_height = self.sprite_sheet.get_width(), self.sprite_sheet.get_height()
-            if (actual_width, actual_height) != (expected_width, expected_height):
-                raise ValueError(f"Skeleton sprite sheet dimensions are {actual_width}x{actual_height}, expected {expected_width}x{expected_height}")
-
-            # Extract walking frames for each direction
-            self.walking_frames = {
-                "up": [],
-                "right": [],
-                "down": [],
-                "left": []
-            }
-            frame_width = 48
-            frame_height = 48
-            try:
-                # Row 1: Walking up (y=0)
-                for i in range(3):
-                    frame = self.sprite_sheet.subsurface((i * frame_width, 0, frame_width, frame_height))
-                    self.walking_frames["up"].append(frame)
-
-                # Row 2: Walking right (y=48)
-                for i in range(3):
-                    frame = self.sprite_sheet.subsurface((i * frame_width, 48, frame_width, frame_height))
-                    self.walking_frames["right"].append(frame)
-
-                # Row 3: Walking down (y=96)
-                for i in range(3):
-                    frame = self.sprite_sheet.subsurface((i * frame_width, 96, frame_width, frame_height))
-                    self.walking_frames["down"].append(frame)
-
-                # Row 4: Walking left (y=144)
-                for i in range(3):
-                    frame = self.sprite_sheet.subsurface((i * frame_width, 144, frame_width, frame_height))
-                    self.walking_frames["left"].append(frame)
-
-                self.current_sprite = self.walking_frames["right"][0]
-            except pygame.error as e:
-                raise pygame.error(f"Failed to extract frames from sprite sheet: {e}")
+        elif enemy_type == "octorok":
+            sprite_sheet_path = os.path.join(PROJECT_ROOT, "assets/enemies/octorok_sheet.png")
         else:
             raise ValueError(f"Unsupported enemy type: {enemy_type}")
+
+        if not os.path.exists(sprite_sheet_path):
+            raise FileNotFoundError(f"Enemy sprite sheet not found at: {sprite_sheet_path}")
+        self.sprite_sheet = pygame.image.load(sprite_sheet_path).convert_alpha()
+        # Verify dimensions (assuming 144x192 for 3x4 frames)
+        expected_width = 144  # 3 frames wide (48x3)
+        expected_height = 192  # 4 frames tall (48x4)
+        actual_width, actual_height = self.sprite_sheet.get_width(), self.sprite_sheet.get_height()
+        if actual_width < expected_width or actual_height < expected_height:
+            raise ValueError(f"Enemy sprite sheet dimensions {actual_width}x{actual_height} are smaller than required {expected_width}x{expected_height}")
+        # Extract walking frames for each direction
+        self.walking_frames = {
+            "up": [],
+            "right": [],
+            "down": [],
+            "left": []
+        }
+        frame_width = 48
+        frame_height = 48
+        try:
+            # Row 1: Walking up (y=0)
+            for i in range(3):
+                frame = self.sprite_sheet.subsurface((i * frame_width, 0, frame_width, frame_height))
+                self.walking_frames["up"].append(frame)
+
+            # Row 2: Walking right (y=48)
+            for i in range(3):
+                frame = self.sprite_sheet.subsurface((i * frame_width, 48, frame_width, frame_height))
+                self.walking_frames["right"].append(frame)
+
+            # Row 3: Walking down (y=96)
+            for i in range(3):
+                frame = self.sprite_sheet.subsurface((i * frame_width, 96, frame_width, frame_height))
+                self.walking_frames["down"].append(frame)
+
+            # Row 4: Walking left (y=144)
+            for i in range(3):
+                frame = self.sprite_sheet.subsurface((i * frame_width, 144, frame_width, frame_height))
+                self.walking_frames["left"].append(frame)
+
+            self.current_sprite = self.walking_frames["right"][0]
+        except pygame.error as e:
+            raise pygame.error(f"Failed to extract frames from sprite sheet: {e}")
 
     def check_fireball_collision(self, fireballs):
         """Check for collisions with fireballs and reduce health if hit."""
@@ -87,7 +89,7 @@ class Enemy:
                 explosion = fireball.explode()
                 self.world.player.explosions.append(explosion)  # Access player via world
                 fireballs.remove(fireball)  # Remove the fireball on hit
-                print(f"Skeleton hit! Health: {self.health}")
+                print(f"{self.enemy_type} hit! Health: {self.health}")
                 if self.health <= 0:
                     self.is_dying = True
                 break  # Exit the loop after a hit to avoid multiple hits in one frame
@@ -179,5 +181,5 @@ class Enemy:
         screen.blit(self.current_sprite, self.rect)
 
     def is_dead(self):
-        """Return True if the skeleton has finished its death animation."""
+        """Return True if the enemy has finished its death animation."""
         return self.is_dying and self.death_timer >= self.death_duration

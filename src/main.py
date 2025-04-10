@@ -4,6 +4,7 @@ import os
 from player import Player
 from world import World
 from enemy import Enemy
+from bush import Bush
 
 # Get the project root directory
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -28,19 +29,30 @@ for joystick in joysticks:
     joystick.init()
     print(f"Gamepad connected: {joystick.get_name()}")
 
-# Create the world and player
-world = World()
-player = Player(WINDOW_WIDTH // 2 - 24, WINDOW_HEIGHT // 2 - 24, world)
-world.player = player  # Set the player reference in the world
-
-# Spawn the skeleton in room 1
-enemies = []
-if world.current_room_index == 0:
-    skeleton = Enemy(200, 200, "skeleton", world)
-    enemies.append(skeleton)
-
 # Font for FPS and game over display
 font = pygame.font.Font(None, 36)
+
+# Game initialization function
+def init_game():
+    world = World()
+    player = Player(WINDOW_WIDTH // 2 - 24, WINDOW_HEIGHT // 2 - 24, world)
+    world.player = player
+    enemies = []
+    if world.current_room_index == 0:
+        octorok1 = Enemy(300, 300, "octorok", world)
+        octorok2 = Enemy(350, 300, "octorok", world)
+        octorok3 = Enemy(400, 300, "octorok", world)
+        enemies = [octorok1, octorok2, octorok3]
+    bushes = [
+        Bush(5 * world.tile_size, 5 * world.tile_size),
+        Bush(6 * world.tile_size, 5 * world.tile_size),
+        Bush(7 * world.tile_size, 5 * world.tile_size)
+    ]
+    return world, player, enemies, bushes
+
+# Initial game setup
+world, player, enemies, bushes = init_game()
+game_state = "playing"  # Start in playing state
 
 # Main game loop
 running = True
@@ -51,71 +63,93 @@ while running:
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 running = False
-            elif event.key == pygame.K_SPACE:
+            elif game_state == "playing" and event.key == pygame.K_SPACE:
                 player.shoot_fireball()
-        elif event.type == pygame.JOYBUTTONDOWN:
+            elif game_state == "game_over" and event.key == pygame.K_r:
+                # Restart the game
+                world, player, enemies, bushes = init_game()
+                game_state = "playing"
+        elif event.type == pygame.JOYBUTTONDOWN and game_state == "playing":
             if event.button == 0:
                 player.shoot_fireball()
 
-    # Handle input
-    keys = pygame.key.get_pressed()
-    joystick_vx, joystick_vy = 0, 0
-    if joysticks:
-        joystick = joysticks[0]
-        joystick_vx = joystick.get_axis(0)
-        joystick_vy = joystick.get_axis(1)
-        deadzone = 0.2
-        if abs(joystick_vx) < deadzone:
-            joystick_vx = 0
-        if abs(joystick_vy) < deadzone:
-            joystick_vy = 0
-        joystick_vx *= player.speed
-        joystick_vy *= player.speed
+    if game_state == "playing":
+        # Handle input
+        keys = pygame.key.get_pressed()
+        joystick_vx, joystick_vy = 0, 0
+        if joysticks:
+            joystick = joysticks[0]
+            joystick_vx = joystick.get_axis(0)
+            joystick_vy = joystick.get_axis(1)
+            deadzone = 0.2
+            if abs(joystick_vx) < deadzone:
+                joystick_vx = 0
+            if abs(joystick_vy) < deadzone:
+                joystick_vy = 0
+            joystick_vx *= player.speed
+            joystick_vy *= player.speed
 
-    # Move player
-    if joystick_vx != 0 or joystick_vy != 0:
-        player.move_with_velocity(joystick_vx, joystick_vy, WINDOW_WIDTH, WINDOW_HEIGHT)
-    else:
-        player.move(keys, WINDOW_WIDTH, WINDOW_HEIGHT)
+        # Move player
+        if joystick_vx != 0 or joystick_vy != 0:
+            player.move_with_velocity(joystick_vx, joystick_vy, WINDOW_WIDTH, WINDOW_HEIGHT)
+        else:
+            player.move(keys, WINDOW_WIDTH, WINDOW_HEIGHT)
 
-    # Update game state
-    player.update()  # Update invincibility timer and state
-    player.update_fireballs(WINDOW_WIDTH, WINDOW_HEIGHT)
-    if world.current_room_index == 0:
-        for enemy in enemies:
-            enemy.update(WINDOW_WIDTH, WINDOW_HEIGHT, player.fireballs)
-            # Use inflated rects for collision detection
-            player_collision_rect = player.rect.inflate(4, 4)
-            enemy_collision_rect = enemy.rect.inflate(4, 4)
-            if not enemy.is_dying and player_collision_rect.colliderect(enemy_collision_rect):
-                player.take_damage()
-        # Remove dead enemies
-        enemies = [enemy for enemy in enemies if not enemy.is_dead()]
+        # Update game state
+        player.update()
+        player.update_fireballs(WINDOW_WIDTH, WINDOW_HEIGHT)
+        if world.current_room_index == 0:
+            for enemy in enemies:
+                enemy.update(WINDOW_WIDTH, WINDOW_HEIGHT, player.fireballs)
+                player_collision_rect = player.rect.inflate(4, 4)
+                enemy_collision_rect = enemy.rect.inflate(4, 4)
+                if not enemy.is_dying and player_collision_rect.colliderect(enemy_collision_rect):
+                    player.take_damage()
+            enemies = [enemy for enemy in enemies if not enemy.is_dead()]
 
-    # Check if player is dead
-    if player.health <= 0:
-        screen.fill((0, 0, 0))  # Black background for game over
+            # Update bushes
+            for bush in bushes[:]:
+                hit_fireball = bush.check_fireball_collision(player.fireballs)
+                if hit_fireball:
+                    explosion = hit_fireball.explode()
+                    player.explosions.append(explosion)
+                    player.fireballs.remove(hit_fireball)
+            bushes = [bush for bush in bushes if not bush.destroyed]
+
+            # Check if all enemies are defeated to unlock the door
+            if len(enemies) == 0 and world.tile_map[7][18] == 3:
+                world.set_tile(7, 18, 2)  # Unlock the door
+                print("Door unlocked!")
+
+        # Check for game over
+        if player.health <= 0:
+            game_state = "game_over"
+
+        # Draw everything
+        screen.fill((200, 200, 200))
+        world.draw(screen)
+        if world.current_room_index == 0:
+            for bush in bushes:
+                bush.draw(screen)
+            for enemy in enemies:
+                enemy.draw(screen)
+        player.draw(screen)
+
+        # Draw FPS
+        fps = str(int(clock.get_fps()))
+        fps_text = font.render(fps, True, (0, 0, 0))
+        fps_rect = fps_text.get_rect(topright=(WINDOW_WIDTH - 10, 10))
+        screen.blit(fps_text, fps_rect)
+
+    elif game_state == "game_over":
+        # Draw game over screen
+        screen.fill((0, 0, 0))  # Black background
         game_over_text = font.render("Game Over", True, (255, 0, 0))  # Red text
-        screen.blit(game_over_text, (WINDOW_WIDTH // 2 - 50, WINDOW_HEIGHT // 2 - 10))
-        pygame.display.flip()
-        pygame.time.wait(2000)  # Wait 2 seconds
-        running = False
+        restart_text = font.render("Press R to Restart", True, (255, 255, 255))  # White text
+        screen.blit(game_over_text, (WINDOW_WIDTH // 2 - 50, WINDOW_HEIGHT // 2 - 20))
+        screen.blit(restart_text, (WINDOW_WIDTH // 2 - 70, WINDOW_HEIGHT // 2 + 10))
 
-    # Draw everything
-    screen.fill((255, 255, 255))  # White background
-    world.draw(screen)
-    if world.current_room_index == 0:
-        for enemy in enemies:
-            enemy.draw(screen)
-    player.draw(screen)
-
-    # Draw FPS
-    fps = str(int(clock.get_fps()))
-    fps_text = font.render(fps, True, (0, 0, 0))  # Black for better visibility
-    fps_rect = fps_text.get_rect(topright=(WINDOW_WIDTH - 10, 10))
-    screen.blit(fps_text, fps_rect)
     pygame.display.flip()
-
     clock.tick(FPS)
 
 pygame.quit()
