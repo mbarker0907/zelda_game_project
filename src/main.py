@@ -32,7 +32,7 @@ FPS = 60
 
 # Set up the display
 screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SCALED)
-pygame.display.set_caption("Syb's Zelda Game")
+pygame.display.set_caption("Barker's Adventure + Pets!: Nina Barks, Alice Bites")
 clock = pygame.time.Clock()
 
 # Initialize joystick
@@ -42,8 +42,9 @@ for joystick in joysticks:
     joystick.init()
     print(f"Gamepad connected: {joystick.get_name()}")
 
-# Font for game over display
-font = pygame.font.Font(None, 36)
+# Fonts for title screen and game over
+title_font = pygame.font.Font(None, 48)  # Bigger font for title
+font = pygame.font.Font(None, 36)        # Regular font for instructions
 
 # Game initialization function
 def init_game():
@@ -69,7 +70,7 @@ def init_game():
 
 # Initial game setup
 world, player, enemies, bushes, cat, dog = init_game()
-game_state = "playing"
+game_state = "title"  # Start at title screen
 
 # Main game loop
 running = True
@@ -80,18 +81,29 @@ while running:
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 running = False
+            elif game_state == "title" and event.key == pygame.K_SPACE:
+                game_state = "playing"  # Start game from title screen
             elif game_state == "playing" and event.key == pygame.K_SPACE:
                 player.shoot_fireball()
-                shoot_sound.play()  # Play shoot sound
+                shoot_sound.play()
             elif game_state == "game_over" and event.key == pygame.K_r:
                 world, player, enemies, bushes, cat, dog = init_game()
                 game_state = "playing"
         elif event.type == pygame.JOYBUTTONDOWN and game_state == "playing":
             if event.button == 0:
                 player.shoot_fireball()
-                shoot_sound.play()  # Play shoot sound
+                shoot_sound.play()
 
-    if game_state == "playing":
+    if game_state == "title":
+        screen.fill((0, 0, 0))  # Black background
+        title_text = title_font.render("Barker's Adventure + Pets!:", True, (255, 255, 255))
+        subtitle_text = title_font.render("Nina Bites, Alice Meows", True, (255, 255, 255))
+        start_text = font.render("Press SPACE to Start", True, (255, 255, 0))
+        screen.blit(title_text, (WINDOW_WIDTH // 2 - title_text.get_width() // 2, WINDOW_HEIGHT // 2 - 60))
+        screen.blit(subtitle_text, (WINDOW_WIDTH // 2 - subtitle_text.get_width() // 2, WINDOW_HEIGHT // 2 - 20))
+        screen.blit(start_text, (WINDOW_WIDTH // 2 - start_text.get_width() // 2, WINDOW_HEIGHT // 2 + 40))
+
+    elif game_state == "playing":
         # Handle input
         keys = pygame.key.get_pressed()
         joystick_vx, joystick_vy = 0, 0
@@ -125,7 +137,7 @@ while running:
                 enemy_collision_rect = enemy.rect.inflate(4, 4)
                 if not enemy.is_dying and player_collision_rect.colliderect(enemy_collision_rect):
                     player.take_damage()
-                    hit_sound.play()  # Play hit sound
+                    hit_sound.play()
             enemies = [enemy for enemy in enemies if not enemy.is_dead()]
             for bush in bushes[:]:
                 hit_fireball = bush.check_fireball_collision(player.fireballs)
@@ -146,7 +158,7 @@ while running:
 
         if player.health <= 0:
             game_state = "game_over"
-            gameover_sound.play()  # Play game over sound
+            gameover_sound.play()
 
         # Draw everything
         screen.fill((200, 200, 200))
