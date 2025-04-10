@@ -7,7 +7,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 class Enemy:
     def __init__(self, x, y, enemy_type, world):
         self.world = world
-        self.size = 32  # Skeleton frames are 32x32
+        self.size = 48  # Skeleton frames are 32x32
         self.enemy_type = enemy_type
         self.rect = pygame.Rect(x, y, self.size, self.size)
         self.speed = 2
@@ -24,15 +24,15 @@ class Enemy:
                 raise FileNotFoundError(f"Skeleton sprite sheet not found at: {sprite_sheet_path}")
             self.sprite_sheet = pygame.image.load(sprite_sheet_path).convert_alpha()
             # Verify dimensions
-            expected_width = 96  # 3 frames wide
-            expected_height = 128  # 4 frames tall
+            expected_width = 144  # 3 frames wide
+            expected_height = 192  # 4 frames tall
             actual_width, actual_height = self.sprite_sheet.get_width(), self.sprite_sheet.get_height()
             if (actual_width, actual_height) != (expected_width, expected_height):
                 raise ValueError(f"Skeleton sprite sheet dimensions are {actual_width}x{actual_height}, expected {expected_width}x{expected_height}")
             # Extract walking frames (first 2 frames in the first row)
             self.walking_frames = []
-            frame_width = 32
-            frame_height = 32
+            frame_width = 48
+            frame_height = 48
             for i in range(2):  # First 2 frames
                 frame = self.sprite_sheet.subsurface((i * frame_width, 0, frame_width, frame_height))
                 self.walking_frames.append(frame)
