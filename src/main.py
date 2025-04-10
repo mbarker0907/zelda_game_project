@@ -48,6 +48,7 @@ def init_game():
         Bush(6 * world.tile_size, 5 * world.tile_size),
         Bush(7 * world.tile_size, 5 * world.tile_size)
     ]
+    world.initialize_room_objects()  # Spawn chests initially
     return world, player, enemies, bushes
 
 # Initial game setup
@@ -66,7 +67,6 @@ while running:
             elif game_state == "playing" and event.key == pygame.K_SPACE:
                 player.shoot_fireball()
             elif game_state == "game_over" and event.key == pygame.K_r:
-                # Restart the game
                 world, player, enemies, bushes = init_game()
                 game_state = "playing"
         elif event.type == pygame.JOYBUTTONDOWN and game_state == "playing":
@@ -116,10 +116,17 @@ while running:
                     player.fireballs.remove(hit_fireball)
             bushes = [bush for bush in bushes if not bush.destroyed]
 
-            # Check if all enemies are defeated to unlock the door
+            # Unlock door in room 1
             if len(enemies) == 0 and world.tile_map[7][18] == 3:
-                world.set_tile(7, 18, 2)  # Unlock the door
+                world.set_tile(7, 18, 2)
                 print("Door unlocked!")
+        elif world.current_room_index == 1:
+            # Update chests in room 2
+            for chest in world.chests:
+                item = chest.check_collision(player.rect)
+                if item and item not in player.inventory:
+                    player.inventory.append(item)
+                    print(f"Collected {item}!")
 
         # Check for game over
         if player.health <= 0:
@@ -133,7 +140,10 @@ while running:
                 bush.draw(screen)
             for enemy in enemies:
                 enemy.draw(screen)
-        player.draw(screen)
+        elif world.current_room_index == 1:
+            for chest in world.chests:
+                chest.draw(screen)
+        player.draw(screen, WINDOW_WIDTH)
 
         # Draw FPS
         fps = str(int(clock.get_fps()))
@@ -142,10 +152,9 @@ while running:
         screen.blit(fps_text, fps_rect)
 
     elif game_state == "game_over":
-        # Draw game over screen
-        screen.fill((0, 0, 0))  # Black background
-        game_over_text = font.render("Game Over", True, (255, 0, 0))  # Red text
-        restart_text = font.render("Press R to Restart", True, (255, 255, 255))  # White text
+        screen.fill((0, 0, 0))
+        game_over_text = font.render("Game Over", True, (255, 0, 0))
+        restart_text = font.render("Press R to Restart", True, (255, 255, 255))
         screen.blit(game_over_text, (WINDOW_WIDTH // 2 - 50, WINDOW_HEIGHT // 2 - 20))
         screen.blit(restart_text, (WINDOW_WIDTH // 2 - 70, WINDOW_HEIGHT // 2 + 10))
 

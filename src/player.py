@@ -74,6 +74,16 @@ class Player:
         else:
             self.heart_sprite = pygame.transform.scale(pygame.image.load(heart_path).convert_alpha(), (24, 24))
 
+        # Add inventory
+        self.inventory = []  # List to store items like "key"
+        # Load key sprite for UI
+        key_path = os.path.join(PROJECT_ROOT, "assets/objects/key.png")
+        if not os.path.exists(key_path):
+            self.key_sprite = pygame.Surface((32, 32))
+            self.key_sprite.fill((255, 255, 0))  # Yellow square as placeholder
+        else:
+            self.key_sprite = pygame.image.load(key_path).convert_alpha()
+
     def take_damage(self):
         """Reduce health by 1 and make the player invincible for 1 second."""
         if not self.invincible:
@@ -326,7 +336,7 @@ class Player:
             if exp["frame"] >= 3:  # Stop after the last explosion frame (0, 1, 2)
                 self.explosions.remove(exp)
 
-    def draw(self, screen):
+    def draw(self, screen, window_width):
         screen.blit(self.current_sprite, self.rect)
         # Draw fireballs
         for fireball in self.fireballs:
@@ -340,12 +350,16 @@ class Player:
                 screen.blit(sprite, sprite_rect)
         # Draw health (hearts) in the top-left corner
         for i in range(self.max_health):
-            heart_x = 10 + i * (self.heart_sprite.get_width() + 10)  # 10px padding, 10px between hearts
-            heart_y = 10  # 10px from the top
+            heart_x = 10 + i * (self.heart_sprite.get_width() + 10)
+            heart_y = 10
             if i < self.health:
                 screen.blit(self.heart_sprite, (heart_x, heart_y))
             else:
-                # Draw an empty heart (semi-transparent)
                 empty_heart = self.heart_sprite.copy()
-                empty_heart.set_alpha(64)  # 25% opacity for empty hearts
+                empty_heart.set_alpha(64)
                 screen.blit(empty_heart, (heart_x, heart_y))
+        # Draw inventory (key) in the top-right corner
+        if "key" in self.inventory:
+            key_x = window_width - self.key_sprite.get_width() - 10  # 10px padding from right
+            key_y = 10  # 10px from top
+            screen.blit(self.key_sprite, (key_x, key_y))
