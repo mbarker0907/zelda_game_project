@@ -8,8 +8,8 @@ class Companion:
         self.companion_type = companion_type
         # Set size based on type
         if companion_type == "cat":
-            self.frame_width = 16
-            self.frame_height = 16
+            self.frame_width = 24
+            self.frame_height = 24
         else:  # Default to dog size
             self.frame_width = 32
             self.frame_height = 32

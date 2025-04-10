@@ -20,6 +20,11 @@ music_path = os.path.join(PROJECT_ROOT, "assets/audio/background_music.mp3")
 pygame.mixer.music.load(music_path)
 pygame.mixer.music.play(-1)  # -1 means loop indefinitely
 
+# Load sound effects
+hit_sound = pygame.mixer.Sound(os.path.join(PROJECT_ROOT, "assets/audio/hit.wav"))
+shoot_sound = pygame.mixer.Sound(os.path.join(PROJECT_ROOT, "assets/audio/shoot.wav"))
+gameover_sound = pygame.mixer.Sound(os.path.join(PROJECT_ROOT, "assets/audio/gameover.wav"))
+
 # Constants
 WINDOW_WIDTH = 640
 WINDOW_HEIGHT = 480
@@ -57,8 +62,8 @@ def init_game():
         Bush(7 * world.tile_size, 5 * world.tile_size)
     ]
     # Spawn companions
-    cat = Companion(player.rect.x + 40, player.rect.y, "cat")  # Cat follows player
-    dog = Companion(cat.rect.x + 40, cat.rect.y, "dog")        # Dog follows cat
+    cat = Companion(player.rect.x + 40, player.rect.y, "cat")
+    dog = Companion(cat.rect.x + 40, cat.rect.y, "dog")
     world.initialize_room_objects()
     return world, player, enemies, bushes, cat, dog
 
@@ -77,12 +82,14 @@ while running:
                 running = False
             elif game_state == "playing" and event.key == pygame.K_SPACE:
                 player.shoot_fireball()
+                shoot_sound.play()  # Play shoot sound
             elif game_state == "game_over" and event.key == pygame.K_r:
-                world, player, enemies, bushes, cat, dog = init_game()  # Update restart
+                world, player, enemies, bushes, cat, dog = init_game()
                 game_state = "playing"
         elif event.type == pygame.JOYBUTTONDOWN and game_state == "playing":
             if event.button == 0:
                 player.shoot_fireball()
+                shoot_sound.play()  # Play shoot sound
 
     if game_state == "playing":
         # Handle input
@@ -109,8 +116,8 @@ while running:
         # Update game state
         player.update()
         player.update_fireballs(WINDOW_WIDTH, WINDOW_HEIGHT)
-        cat.update(player.rect)  # Cat follows player
-        dog.update(cat.rect)    # Dog follows cat
+        cat.update(player.rect)
+        dog.update(cat.rect)
         if world.current_room_index == 0:
             for enemy in enemies:
                 enemy.update(WINDOW_WIDTH, WINDOW_HEIGHT, player.fireballs)
@@ -118,6 +125,7 @@ while running:
                 enemy_collision_rect = enemy.rect.inflate(4, 4)
                 if not enemy.is_dying and player_collision_rect.colliderect(enemy_collision_rect):
                     player.take_damage()
+                    hit_sound.play()  # Play hit sound
             enemies = [enemy for enemy in enemies if not enemy.is_dead()]
             for bush in bushes[:]:
                 hit_fireball = bush.check_fireball_collision(player.fireballs)
@@ -138,6 +146,7 @@ while running:
 
         if player.health <= 0:
             game_state = "game_over"
+            gameover_sound.play()  # Play game over sound
 
         # Draw everything
         screen.fill((200, 200, 200))
@@ -151,7 +160,7 @@ while running:
             for chest in world.chests:
                 chest.draw(screen)
         cat.draw(screen)
-        dog.draw(screen)  # Draw dog after cat
+        dog.draw(screen)
         player.draw(screen, WINDOW_WIDTH)
 
     elif game_state == "game_over":
