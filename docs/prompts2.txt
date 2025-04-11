@@ -1,0 +1,110 @@
+# Barker's Adventure: Progress and Next Steps
+
+## Summary of Progress
+Here’s what we’ve accomplished so far in *Barker’s Adventure*:
+- **Player Movement:** Implemented basic movement and collision detection.
+- **Companions:** Added Nina (dog) and Alice (cat) to follow the player.
+- **Tilemap:** Created a basic tilemap for the game world, with recent adjustments to tile positions.
+- **Enemies:** Added enemy spawning with basic AI (e.g., Octoroks).
+- **Doors and Transitions:** Implemented doors that unlock when all enemies in a room are defeated, plus a fade effect for smooth room transitions.
+- **Bug Fixes:** Corrected door unlock logic, fixed tilemap issues in `world.py`, and improved debugging output.
+
+We’re off to a solid start, and the core gameplay loop is taking shape!
+
+## Required Assets
+To bring your new ideas to life, we’ll need some fresh assets. Here’s the list:
+- **Tiles:**
+  - Water tiles (for rivers or lakes).
+  - Tree tiles (for forests or obstacles).
+  - Bridge tiles (to cross water).
+  - Town tiles (buildings, paths, etc.).
+- **Enemies:**
+  - Sprites for new enemy types (e.g., skeletons, bats, ranged attackers).
+- **Powerups/Items:**
+  - Powerup sprites (e.g., projectile upgrades, health boosts).
+  - Weapon sprites (e.g., sword, bow, bigger fireball).
+- **UI Elements:**
+  - Gold coin sprite (for enemy drops).
+  - HUD sprite for the current projectile (e.g., fireball icon).
+  - Stat/level-up UI (e.g., health bars, experience bars).
+  - Inventory slots for weapons.
+- **Town and NPCs:**
+  - Building sprites (shops, houses).
+  - NPC sprites (shopkeepers, quest givers).
+- **Miscellaneous:**
+  - Weather effects (rain, fog).
+  - Boss enemy sprite and attack effects.
+
+These assets will support the town, powerups, inventory, and more enemies you’ve got in mind.
+
+## Progress Tracker (20 New Items)
+Here’s a new list of 20 tasks to enhance the game. I’ve included your unfinished items (17–19), your specific requests (walls, enemies, powerups, etc.), and some extra ideas inspired by *The Legend of Zelda: A Link to the Past*, *Enter the Gungeon*, *Dark Souls*, *Final Fantasy 6*, and *Earthbound*.
+
+1. **Wall Collision:**  
+   Prevent the player from walking through walls, trees, or water tiles.
+
+2. **More Enemy Types:**  
+   Add new enemies with unique behaviors (e.g., flying bats, ranged archers).
+
+3. **Enemies in Each Room:**  
+   Ensure every room spawns enemies, with increasing difficulty.
+
+4. **Pet Powerup Drops:**  
+   After a set number of kills, Nina or Alice drops a powerup (e.g., bigger/stronger projectiles).
+
+5. **Projectile Upgrades:**  
+   Upgrade the fireball (e.g., size, damage) or unlock new types (e.g., ice bolts).
+
+6. **Inventory System:**  
+   Add an inventory for switching between weapons (e.g., fireball, sword).
+
+7. **Current Projectile HUD:**  
+   Display the active projectile (e.g., fireball) in the top HUD.
+
+8. **Pet Attacks:**  
+   Enable Nina and Alice to attack enemies, dealing damage or stunning them.
+
+9. **Stats and Leveling:**  
+   Add stats (health, attack) and leveling for the player, Nina, and Alice.
+
+10. **Gold Drops:**  
+    Enemies drop gold coins for the player to collect.
+
+11. **Town Home Base:**  
+    Create a town with buildings as a safe hub.
+
+12. **NPC Interactions:**  
+    Add NPCs in the town for dialogue, quests, or trading.
+
+13. **Shop System:**  
+    Build a shop to buy weapons, powerups, or upgrades with gold.
+
+14. **Quest System:**  
+    Implement NPC-given quests with rewards (e.g., gold, items).
+
+15. **Procedural Rooms:**  
+    Add roguelike room generation (inspired by *Enter the Gungeon*).
+
+16. **Checkpoints:**  
+    Include bonfire-like checkpoints for resting (inspired by *Dark Souls*).
+
+17. **Minimap:**  
+    Add a minimap to track explored areas (unfinished from last list).
+
+18. **Weather Effects:**  
+    Implement rain or a day-night cycle (unfinished from last list).
+
+19. **Boss Fight:**  
+    Design a boss with unique mechanics (unfinished from last list).
+
+20. **Quirky Details:**  
+    Add humor or quirky NPCs (inspired by *Earthbound*), like a dog who sells bones.
+
+## Inspiration from Your Favorite Games
+- **Zelda: A Link to the Past:** Exploration, secrets in the tilemap, and a vibrant world.
+- **Enter the Gungeon:** Randomized rooms, weapon variety, and synergy between items.
+- **Dark Souls:** Tough enemies, checkpoints, and a sense of challenge.
+- **Final Fantasy 6:** Deep stats, leveling, and NPC-driven stories.
+- **Earthbound:** Whimsical towns, funny dialogue, and unique charm.
+
+These ideas should make *Barker’s Adventure* a blast to play, blending your vision with some classic game vibes!

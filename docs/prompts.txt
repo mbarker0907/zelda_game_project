@@ -37,7 +37,7 @@
 # [x] 13. Add background music
 # [x] 14. Add sound effects
 # [x] 15. Add a game over screen
-# [ ] 16. Add a title screen
+# [x] 16. Add a title screen
 # [ ] 17. Polish: Add screen shake on explosion
 # [ ] 18. Polish: Add particle effects for bush destruction
 # [ ] 19. Polish: Add a shadow under the player
