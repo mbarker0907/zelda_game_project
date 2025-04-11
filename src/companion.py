@@ -37,7 +37,7 @@ class Companion:
         dx = target_rect.centerx - self.rect.centerx
         dy = target_rect.centery - self.rect.centery
         dist = (dx ** 2 + dy ** 2) ** 0.5
-        target_dist = 40 if self.type == "cat" else 80
+        target_dist = 60 if self.type == "cat" else 80
         if dist > target_dist:
             dx, dy = dx / dist, dy / dist
             self.rect.x += dx * self.speed

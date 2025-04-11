@@ -50,7 +50,6 @@ def spawn_room_objects(world, enemies, bushes, npcs):
             while True:
                 x = random.randint(1, world.map_width - 2) * world.tile_size
                 y = random.randint(1, world.map_height - 2) * world.tile_size
-                # Avoid spawning within 100 pixels of door at (27, 9)
                 door_x, door_y = 27 * world.tile_size, 9 * world.tile_size
                 dist = ((x - door_x) ** 2 + (y - door_y) ** 2) ** 0.5
                 if not world.is_wall(x, y) and dist > 100:
@@ -92,6 +91,7 @@ game_state = "title"
 door_unlocked = False
 weather_alpha = 0
 previous_room_index = world.current_room_index
+current_shopkeeper = None
 
 running = True
 while running:
@@ -109,7 +109,11 @@ while running:
             elif game_state == "playing" and event.key == pygame.K_e:
                 for npc in npcs:
                     if player.rect.colliderect(npc.rect):
-                        npc.interact(player)
+                        if npc.type == "shopkeeper":
+                            current_shopkeeper = npc
+                            game_state = "shopping"
+                        else:
+                            npc.interact(player)
             elif game_state == "playing" and event.key == pygame.K_1:
                 player.switch_weapon(0)
             elif game_state == "playing" and event.key == pygame.K_2:
@@ -119,6 +123,27 @@ while running:
                 game_state = "playing"
                 door_unlocked = False
                 previous_room_index = world.current_room_index
+            elif game_state == "shopping" and event.key == pygame.K_e:
+                game_state = "playing"
+                current_shopkeeper = None
+            elif game_state == "shopping":
+                keys = pygame.key.get_pressed()
+                if current_shopkeeper:
+                    items_to_remove = []  # Track items to remove after iteration
+                    for idx, (item, price) in enumerate(current_shopkeeper.shop_items.items()):
+                        if keys[pygame.K_1 + idx] and player.gold >= price:
+                            if item == "ice_bolt" and "ice_bolt" in player.inventory:
+                                continue
+                            player.gold -= price
+                            if item == "health_potion":
+                                player.health = player.max_health
+                            else:
+                                player.inventory.append(item)
+                            print(f"Bought {item}!")
+                            items_to_remove.append(item)  # Mark item for removal
+                    # Remove items after iteration
+                    for item in items_to_remove:
+                        current_shopkeeper.mark_item_sold(item)
         elif event.type == pygame.JOYBUTTONDOWN and game_state == "playing":
             if event.button == 0:
                 player.shoot_projectile()
@@ -132,6 +157,7 @@ while running:
         screen.blit(title_text, (WINDOW_WIDTH // 2 - title_text.get_width() // 2, WINDOW_HEIGHT // 2 - 60))
         screen.blit(subtitle_text, (WINDOW_WIDTH // 2 - subtitle_text.get_width() // 2, WINDOW_HEIGHT // 2 - 20))
         screen.blit(start_text, (WINDOW_WIDTH // 2 - start_text.get_width() // 2, WINDOW_HEIGHT // 2 + 40))
+        player.draw(screen, WINDOW_WIDTH, WINDOW_HEIGHT)
 
     elif game_state == "playing":
         keys = pygame.key.get_pressed()
@@ -170,9 +196,12 @@ while running:
                     player.take_damage()
                     hit_sound.play()
             enemies = [enemy for enemy in enemies if not enemy.is_dead()]
-            # Update enemy projectiles
             for projectile in world.enemy_projectiles[:]:
                 if not projectile.update(WINDOW_WIDTH, WINDOW_HEIGHT):
+                    world.enemy_projectiles.remove(projectile)
+                elif player.rect.colliderect(projectile.rect):
+                    player.take_damage()
+                    hit_sound.play()
                     world.enemy_projectiles.remove(projectile)
             for bush in bushes[:]:
                 hit_projectile = bush.check_projectile_collision(player.projectiles)
@@ -206,7 +235,6 @@ while running:
                 bush.draw(screen)
             for enemy in enemies:
                 enemy.draw(screen)
-            # Draw enemy projectiles
             for projectile in world.enemy_projectiles:
                 projectile.draw(screen)
         else:
@@ -218,13 +246,21 @@ while running:
             screen.blit(gold["sprite"], gold["rect"])
         cat.draw(screen)
         dog.draw(screen)
-        player.draw(screen, WINDOW_WIDTH)
+        player.draw(screen, WINDOW_WIDTH, WINDOW_HEIGHT)
         if world.current_room_index != 0:
             weather_alpha = (weather_alpha + 1) % 255
             rain_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
             rain_surface.fill((0, 0, 255))
             rain_surface.set_alpha(weather_alpha // 4)
             screen.blit(rain_surface, (0, 0))
+
+    elif game_state == "shopping":
+        screen.fill((0, 0, 0))
+        shop_text = font.render("Shopkeeper: Welcome! Buy something? (Press E to exit)", True, (255, 255, 255))
+        screen.blit(shop_text, (WINDOW_WIDTH // 2 - shop_text.get_width() // 2, 100))
+        for idx, (item, price) in enumerate(current_shopkeeper.shop_items.items()):
+            item_text = font.render(f"{idx + 1}. {item}: {price} gold (You have {player.gold} gold)", True, (255, 255, 0) if player.gold >= price else (255, 0, 0))
+            screen.blit(item_text, (WINDOW_WIDTH // 2 - item_text.get_width() // 2, 150 + idx * 40))
 
     elif game_state == "game_over":
         screenA = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))

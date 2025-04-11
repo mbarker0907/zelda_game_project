@@ -9,7 +9,7 @@ class Enemy:
     def __init__(self, x, y, enemy_type, world):
         self.world = world
         self.type = enemy_type
-        self.speed = 1.0 if enemy_type != "boss" else 0.5  # Adjusted speed
+        self.speed = 1 if enemy_type != "boss" else 0.5
         self.health = 2 if enemy_type != "boss" else 10
         self.attack = 1
         self.direction = random.choice(["left", "right", "up", "down"])
@@ -76,11 +76,17 @@ class Enemy:
                 frame = self.sprite_sheet.subsurface((col * frame_width, row * frame_height, frame_width, frame_height))
                 self.frames[direction].append(frame)
 
+        # Load boss projectile sprites (only for boss)
+        if self.type == "boss":
+            boss_projectile_sheet = pygame.image.load(os.path.join(PROJECT_ROOT, "assets/projectiles/boss_projectile.png")).convert_alpha()
+            # Assuming the sprite sheet is 128x32 with 4 frames of 32x32 each
+            self.boss_projectile_sprites = [boss_projectile_sheet.subsurface((i * 32, 0, 32, 32)) for i in range(4)]
+
     def update(self, window_width, window_height, projectiles):
         if self.is_dying:
             self.death_timer += 1
             if self.death_timer > 30:
-                self.world.drop_gold(self.rect.x, self.rect.y, random.randint(1, 5))
+                self.world.drop_gold(self.rect.x, self.rect.y, random.randint(20, 100))
                 return
         for projectile in projectiles:
             if self.rect.colliderect(projectile.rect):
@@ -118,14 +124,13 @@ class Enemy:
                 self.shoot_projectile()
 
     def shoot_projectile(self):
-        projectile_sprites = [pygame.image.load(os.path.join(PROJECT_ROOT, "assets/projectiles/boss_projectile.png")).convert_alpha()]
         dx = self.world.player.rect.centerx - self.rect.centerx
         dy = self.world.player.rect.centery - self.rect.centery
         dist = (dx ** 2 + dy ** 2) ** 0.5
         if dist > 0:
             dx, dy = dx / dist, dy / dist
-            projectile = Projectile(self.rect.centerx, self.rect.centery, dx * 5, dy * 5, projectile_sprites, [], "boss_projectile", 2)
-            # Append to world.enemy_projectiles
+            # Use the pre-loaded boss projectile sprites
+            projectile = Projectile(self.rect.centerx, self.rect.centery, dx * 5, dy * 5, self.boss_projectile_sprites, [], "boss_projectile", 2)
             if hasattr(self.world, 'enemy_projectiles'):
                 self.world.enemy_projectiles.append(projectile)
             else:
