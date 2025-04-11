@@ -1,6 +1,7 @@
 import pygame
 import sys
 import os
+import random
 from player import Player
 from world import World
 from enemy import Enemy
@@ -15,10 +16,9 @@ pygame.init()
 
 # Initialize Pygame mixer for audio
 pygame.mixer.init()
-# Load and play background music
 music_path = os.path.join(PROJECT_ROOT, "assets/audio/background_music.mp3")
 pygame.mixer.music.load(music_path)
-pygame.mixer.music.play(-1)  # -1 means loop indefinitely
+pygame.mixer.music.play(-1)  # Loop indefinitely
 
 # Load sound effects
 hit_sound = pygame.mixer.Sound(os.path.join(PROJECT_ROOT, "assets/audio/hit.wav"))
@@ -26,8 +26,8 @@ shoot_sound = pygame.mixer.Sound(os.path.join(PROJECT_ROOT, "assets/audio/shoot.
 gameover_sound = pygame.mixer.Sound(os.path.join(PROJECT_ROOT, "assets/audio/gameover.wav"))
 
 # Constants
-WINDOW_WIDTH = 640
-WINDOW_HEIGHT = 480
+WINDOW_WIDTH = 960
+WINDOW_HEIGHT = 640
 FPS = 60
 
 # Set up the display
@@ -46,23 +46,27 @@ for joystick in joysticks:
 title_font = pygame.font.Font(None, 48)  # Bigger font for title
 font = pygame.font.Font(None, 36)        # Regular font for instructions
 
-# Game initialization function
+# **Game Initialization Function**
+# Purpose: Sets up the game world, player, enemies, bushes, and companions when starting or restarting
 def init_game():
-    world = World()
+    # Pass WINDOW_WIDTH, WINDOW_HEIGHT, and screen to World
+    world = World(WINDOW_WIDTH, WINDOW_HEIGHT, screen)
     player = Player(WINDOW_WIDTH // 2 - 24, WINDOW_HEIGHT // 2 - 24, world)
     world.player = player
     enemies = []
     if world.current_room_index == 0:
-        octorok1 = Enemy(300, 300, "octorok", world)
-        octorok2 = Enemy(350, 300, "octorok", world)
-        octorok3 = Enemy(400, 300, "octorok", world)
-        enemies = [octorok1, octorok2, octorok3]
+        for _ in range(3):
+            while True:
+                x = random.randint(1, world.map_width - 2) * world.tile_size
+                y = random.randint(1, world.map_height - 2) * world.tile_size
+                if not world.is_wall(x, y):
+                    enemies.append(Enemy(x, y, "octorok", world))
+                    break
     bushes = [
-        Bush(5 * world.tile_size, 5 * world.tile_size),
-        Bush(6 * world.tile_size, 5 * world.tile_size),
-        Bush(7 * world.tile_size, 5 * world.tile_size)
+        Bush(8 * world.tile_size, 8 * world.tile_size),
+        Bush(10 * world.tile_size, 8 * world.tile_size),
+        Bush(12 * world.tile_size, 8 * world.tile_size)
     ]
-    # Spawn companions
     cat = Companion(player.rect.x + 40, player.rect.y, "cat")
     dog = Companion(cat.rect.x + 40, cat.rect.y, "dog")
     world.initialize_room_objects()
@@ -70,11 +74,14 @@ def init_game():
 
 # Initial game setup
 world, player, enemies, bushes, cat, dog = init_game()
-game_state = "title"  # Start at title screen
+game_state = "title"
+door_unlocked = False  # Flag to track door state
 
-# Main game loop
+# **Main Game Loop**
+# Purpose: Runs continuously, handling events, updating game state, and rendering
 running = True
 while running:
+    # **Event Handling**
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -82,20 +89,22 @@ while running:
             if event.key == pygame.K_ESCAPE:
                 running = False
             elif game_state == "title" and event.key == pygame.K_SPACE:
-                game_state = "playing"  # Start game from title screen
+                game_state = "playing"
             elif game_state == "playing" and event.key == pygame.K_SPACE:
                 player.shoot_fireball()
                 shoot_sound.play()
             elif game_state == "game_over" and event.key == pygame.K_r:
                 world, player, enemies, bushes, cat, dog = init_game()
                 game_state = "playing"
+                door_unlocked = False  # Reset door state on restart
         elif event.type == pygame.JOYBUTTONDOWN and game_state == "playing":
             if event.button == 0:
                 player.shoot_fireball()
                 shoot_sound.play()
 
+    # **Title Screen State**
     if game_state == "title":
-        screen.fill((0, 0, 0))  # Black background
+        screen.fill((0, 0, 0))
         title_text = title_font.render("Barker's Adventure + Pets!:", True, (255, 255, 255))
         subtitle_text = title_font.render("Nina Bites, Alice Meows", True, (255, 255, 255))
         start_text = font.render("Press SPACE to Start", True, (255, 255, 0))
@@ -103,8 +112,9 @@ while running:
         screen.blit(subtitle_text, (WINDOW_WIDTH // 2 - subtitle_text.get_width() // 2, WINDOW_HEIGHT // 2 - 20))
         screen.blit(start_text, (WINDOW_WIDTH // 2 - start_text.get_width() // 2, WINDOW_HEIGHT // 2 + 40))
 
+    # **Playing State**
     elif game_state == "playing":
-        # Handle input
+        # **Handle Input**
         keys = pygame.key.get_pressed()
         joystick_vx, joystick_vy = 0, 0
         if joysticks:
@@ -125,7 +135,7 @@ while running:
         else:
             player.move(keys, WINDOW_WIDTH, WINDOW_HEIGHT)
 
-        # Update game state
+        # **Update Game State**
         player.update()
         player.update_fireballs(WINDOW_WIDTH, WINDOW_HEIGHT)
         cat.update(player.rect)
@@ -133,12 +143,12 @@ while running:
         if world.current_room_index == 0:
             for enemy in enemies:
                 enemy.update(WINDOW_WIDTH, WINDOW_HEIGHT, player.fireballs)
-                player_collision_rect = player.rect.inflate(4, 4)
-                enemy_collision_rect = enemy.rect.inflate(4, 4)
-                if not enemy.is_dying and player_collision_rect.colliderect(enemy_collision_rect):
+                if not enemy.is_dying and player.rect.colliderect(enemy.rect):
                     player.take_damage()
                     hit_sound.play()
             enemies = [enemy for enemy in enemies if not enemy.is_dead()]
+            print(f"Enemies remaining: {len(enemies)}")
+            print(f"Tile at (9, 28): {world.tile_map[9][28]}")
             for bush in bushes[:]:
                 hit_fireball = bush.check_fireball_collision(player.fireballs)
                 if hit_fireball:
@@ -146,9 +156,18 @@ while running:
                     player.explosions.append(explosion)
                     player.fireballs.remove(hit_fireball)
             bushes = [bush for bush in bushes if not bush.destroyed]
-            if len(enemies) == 0 and world.tile_map[7][18] == 3:
-                world.set_tile(7, 18, 2)
-                print("Door unlocked!")
+            # Check if door should be unlocked
+            if len(enemies) == 0 and not door_unlocked:
+                if world.tile_map[9][28] == 3:
+                    world.set_tile(9, 28, 2)
+                    door_unlocked = True
+                    print("Door unlocked!")
+                else:
+                    print("All enemies defeated, but door tile is not a locked door (type 3).")
+            elif len(enemies) > 0:
+                print("Enemies remain - door not unlocked yet.")
+            elif door_unlocked:
+                print("Door already unlocked.")
         elif world.current_room_index == 1:
             for chest in world.chests:
                 item = chest.check_collision(player.rect)
@@ -160,7 +179,7 @@ while running:
             game_state = "game_over"
             gameover_sound.play()
 
-        # Draw everything
+        # **Draw Everything**
         screen.fill((200, 200, 200))
         world.draw(screen)
         if world.current_room_index == 0:
@@ -175,6 +194,7 @@ while running:
         dog.draw(screen)
         player.draw(screen, WINDOW_WIDTH)
 
+    # **Game Over State**
     elif game_state == "game_over":
         screen.fill((0, 0, 0))
         game_over_text = font.render("Game Over", True, (255, 0, 0))
