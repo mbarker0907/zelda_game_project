@@ -1,0 +1,205 @@
+2. Reference Guide: Key Methods, Functions, and Variables
+To help you understand the codebase, I’ll provide a reference guide of the most important methods, functions, and variables in your game. I’ll focus on the core components that drive the game’s functionality, explaining what they do and why they’re important. This will help you study the code without getting overwhelmed by every single detail.
+
+Overview
+The game is structured around several classes:
+
+Game (main.py): Manages the game loop and state.
+Player (player.py): Controls the player character.
+World (world.py): Manages the game map and environment.
+Enemy (enemy.py): Handles enemies and their behavior.
+Companion (companion.py): Manages the cat and dog companions.
+NPC (npc.py): Handles NPCs like the shopkeeper and quest giver.
+Chest (chest.py): Manages chests that contain items.
+Bush (bush.py): Handles destructible bushes.
+Projectile (projectile.py): Manages projectiles (player and enemy).
+HUD (hud.py): Displays the heads-up display (health, inventory, etc.).
+I’ll list key elements from each class, focusing on what’s most relevant for understanding the game’s mechanics.
+
+Game Class (main.py)
+Variables:
+self.state (string): Tracks the current game state ("title", "playing", "shopping", "game_over", "paused"). Used to determine what to update and draw.
+self.debug_mode (boolean): Toggles debug mode (F1 key). When True, hitboxes are drawn in red.
+self.music_volume (float): Controls the background music volume (0.0 to 1.0). Adjusted in the pause menu.
+self.player (Player object): The player character instance.
+self.world (World object): The game world instance.
+self.hud (HUD object): The HUD instance.
+self.enemies (list): List of Enemy objects in the current room.
+self.bushes (list): List of Bush objects in the current room.
+self.npcs (list): List of NPC objects in the current room.
+self.cat (Companion object): The cat companion.
+self.dog (Companion object): The dog companion.
+Methods:
+init_game(): Initializes the game by creating the player, world, HUD, and companions, and spawning room objects. Called when starting a new game or restarting after a game over.
+spawn_room_objects(): Spawns enemies, bushes, and NPCs based on the current room. For example, Room 0 has NPCs, Room 1 has enemies and bushes, Room 3 has a boss.
+handle_input(): Processes user input (keyboard, joystick). Handles state transitions (e.g., ESC to pause), player actions (e.g., SPACE to shoot), and debug mode toggle (F1).
+update(): Updates the game state when self.state == "playing". Updates the player, companions, enemies, projectiles, and world (e.g., day/night cycle).
+draw(): Renders the game based on the current state. Draws the title screen, game world, HUD, and debug hitboxes if enabled.
+run(): The main game loop. Calls handle_input(), update(), and draw() each frame, and maintains the frame rate (FPS from config.py).
+Why It’s Important: The Game class is the heart of your game, orchestrating everything. Understanding its state management (self.state) and how it coordinates updates and rendering will help you add new features (e.g., a new game state like "inventory").
+
+Player Class (player.py)
+Variables:
+self.rect (pygame.Rect): The player’s position and size (24x24 pixels). Used for movement and collision detection.
+self.health (int): The player’s current health (starts at 5).
+self.max_health (int): The player’s maximum health (increases on level-up).
+self.level (int): The player’s level (starts at 1).
+self.experience (int): The player’s current experience points.
+self.experience_to_next_level (int): Experience needed to level up (increases by 1.5x each level).
+self.gold (int): The player’s gold (used to buy items from the shopkeeper).
+self.inventory (list): List of items the player has (e.g., "key", "ice_bolt", "bomb").
+self.weapons (list): List of available weapons (["sword", "bow"]).
+self.current_weapon_index (int): Index of the current weapon in self.weapons.
+self.projectiles (list): List of Projectile objects the player has fired.
+self.direction (float): The player’s facing direction in degrees (0 = right, 90 = up, etc.).
+Methods:
+current_weapon (property): Returns the current weapon based on self.current_weapon_index.
+move(keys, window_width, window_height): Moves the player based on keyboard input (WASD or arrow keys). Updates self.direction and self.rect.
+move_with_velocity(vx, vy, window_width, window_height): Moves the player based on joystick input. Used for gamepad support.
+_apply_movement(dx, dy, window_width, window_height): Applies movement (dx, dy) to the player’s position, checking for walls and boundaries.
+_handle_room_transition(): Handles room transitions when the player steps on a door tile (tile type 2).
+shoot_projectile(): Fires a projectile (e.g., arrow, ice_bolt, bomb) based on the current weapon and inventory.
+update(): Updates the player’s state (e.g., shoot cooldown, level-up if enough experience).
+update_projectiles(window_width, window_height): Updates the player’s projectiles, removing them if they go off-screen.
+take_damage(): Reduces the player’s health by 1.
+switch_weapon(weapon_index): Switches the player’s current weapon (e.g., 1 for sword, 2 for bow).
+draw(screen, window_width, window_height): Draws the player and their projectiles on the screen.
+Why It’s Important: The Player class controls the main character, so understanding how movement, combat, and leveling work will help you tweak gameplay (e.g., add new weapons, adjust speed).
+
+World Class (world.py)
+Variables:
+self.tile_map (list of lists): The current room’s tile map (30x20 tiles). Each tile is an integer (0-8) corresponding to a tile type.
+self.current_room_index (int): The index of the current room (0-3).
+self.rooms (list): List of all room maps (self.room0, self.room1, etc.).
+self.chests (list): List of Chest objects in the current room.
+self.gold_drops (list): List of gold drops (dictionaries with "rect", "amount", "sprite").
+self.item_drops (list): List of item drops (dictionaries with "rect", "item", "sprite").
+self.enemy_projectiles (list): List of enemy projectiles (e.g., boss fireballs).
+self.day_night_cycle (float): A value from 0 to 1 representing the day/night cycle (0 = day, 1 = night).
+self.is_night (boolean): True if it’s night (self.day_night_cycle > 0.5).
+self.minimap (pygame.Surface): A small map showing explored tiles, enemies, NPCs, and the player.
+Methods:
+generate_procedural_room(): Generates Room 2 (Riverside) procedurally with random water and trees.
+initialize_room_objects(): Spawns chests, checkpoints, and other objects based on the current room.
+render_room(): Renders the current room’s tiles to self.map_surface.
+render_minimap(enemies, npcs): Updates the minimap, showing tiles, enemies, NPCs, and the player.
+update(): Updates the day/night cycle.
+draw(screen, enemies, npcs): Draws the room, minimap, and day/night overlay.
+get_tile_type(x, y): Returns the tile type at position (x, y).
+is_wall(x, y): Returns True if the tile at (x, y) is a wall (tile types 1, 3, 4, 5, 8).
+switch_room(new_room_index): Switches to a new room, resetting the map and objects, with a fade transition.
+drop_gold(x, y, amount): Drops gold at (x, y) with the specified amount.
+drop_item(x, y, item_type): Drops an item (e.g., "bomb") at (x, y).
+Why It’s Important: The World class manages the game environment, including the map, room transitions, and day/night cycle. Understanding how tiles and objects are handled will help you design new rooms or add new environmental features.
+
+Enemy Class (enemy.py)
+Variables:
+self.type (string): The enemy type ("archer", "octorok", "bat", "boss").
+self.health (int): The enemy’s health (2 for regular enemies, 10 for the boss).
+self.frozen (boolean): True if the enemy is frozen (by an ice_bolt).
+self.freeze_timer (float): Time remaining for the freeze effect (2 seconds).
+self.damage_flash (int): Frames remaining for the damage flash effect (flashes red when hit).
+self.is_dying (boolean): True if the enemy is in its death animation.
+Methods:
+update(window_width, window_height, player_projectiles): Updates the enemy’s position, checks for projectile collisions, applies status effects, and handles death.
+is_dead(): Returns True if the enemy is dead (health <= 0 and death animation is complete).
+draw(screen): Draws the enemy, applying visual effects (red flash for damage, blue tint for frozen).
+Why It’s Important: Enemies drive the game’s combat. Understanding how they move, take damage, and apply status effects will help you add new enemy types or mechanics (e.g., a new status effect like burning).
+
+Companion Class (companion.py)
+Variables:
+self.type (string): The companion type ("cat" or "dog").
+self.level (int): The companion’s level (starts at 1).
+self.exp (int): The companion’s experience points.
+self.attack_flash (int): Frames remaining for the attack flash effect (flashes yellow when attacking).
+self.level_up_flash (int): Frames remaining for the level-up flash effect (flashes green when leveling up).
+Methods:
+update(target_rect, enemies): Moves the companion toward its target (player for cat, cat for dog) and attacks enemies if in range.
+level_up(): Increases the companion’s level, speed, and resets experience.
+draw(screen): Draws the companion, applying visual effects (yellow flash for attacks, green flash for level-up).
+Why It’s Important: Companions add a unique mechanic to the game. Understanding how they follow and attack will help you enhance their abilities (e.g., add special attacks).
+
+NPC Class (npc.py)
+Variables:
+self.type (string): The NPC type ("shopkeeper" or "quest_giver").
+self.shop_items (dict): Items the shopkeeper sells (e.g., {"ice_bolt": 50, "health_potion": 20}).
+self.quest (dict): The quest for the quest giver (e.g., {"task": "kill_enemies", "target": 5, "reward": 100}).
+self.kills (int): Tracks the number of enemies killed for the quest.
+Methods:
+interact(player): Handles interaction with the NPC (e.g., checks quest progress, gives rewards).
+mark_item_sold(item): Removes an item from the shopkeeper’s inventory after purchase.
+draw(screen): Draws the NPC sprite.
+Why It’s Important: NPCs add interaction and progression. Understanding the quest and shop systems will help you add more NPC types or quests.
+
+Chest Class (chest.py)
+Variables:
+self.is_open (boolean): True if the chest has been opened.
+self.item (string): The item in the chest (e.g., "key", "bomb", "health_potion", "ice_bolt").
+Methods:
+check_collision(player_rect): Checks if the player collides with the chest and opens it, returning the item.
+draw(screen): Draws the chest (closed or open sprite).
+Why It’s Important: Chests add exploration rewards. Understanding how they work will help you add more chest types or items.
+
+Bush Class (bush.py)
+Variables:
+self.destroyed (boolean): True if the bush has been destroyed.
+Methods:
+check_projectile_collision(projectiles): Checks if a projectile hits the bush, destroying it.
+drop_item(world): Drops gold (20% chance) when destroyed.
+draw(screen): Draws the bush if not destroyed.
+Why It’s Important: Bushes add destructible environment elements. Understanding their mechanics will help you add more interactive objects.
+
+Projectile Class (projectile.py)
+Variables:
+self.weapon_type (string): The type of projectile (e.g., "arrow", "ice_bolt", "bomb", "fireball").
+self.explosion_timer (int): Frames remaining for an explosion (e.g., for bombs).
+self.vx, self.vy (float): The projectile’s velocity in the x and y directions.
+Methods:
+update(window_width, window_height): Updates the projectile’s position and animation, returning False if it should be removed.
+explode(): Returns explosion data for bombs or fireballs (e.g., radius, timer).
+draw(screen): Draws the projectile (color for player projectiles, sprite for enemy projectiles).
+Why It’s Important: Projectiles handle ranged combat. Understanding their movement and explosion mechanics will help you add new projectile types.
+
+HUD Class (hud.py)
+Variables:
+self.height (int): The height of the HUD (80 pixels, from HUD_HEIGHT in config.py).
+Methods:
+draw(screen, world): Draws the HUD, including health, inventory, weapon, level, EXP bar, keys, gold, and day/night indicator.
+get_height(): Returns the HUD height.
+Why It’s Important: The HUD provides critical information to the player. Understanding how it displays data will help you add new UI elements (e.g., a quest log).
+
+config.py
+Variables:
+WINDOW_WIDTH, WINDOW_HEIGHT (int): The game window dimensions (960x640 pixels).
+TILE_SIZE (int): The size of each tile (32 pixels).
+MAP_WIDTH, MAP_HEIGHT (int): The size of the map in tiles (30x20).
+PLAYER_SPEED, ENEMY_SPEED, BOSS_SPEED, COMPANION_SPEED, PROJECTILE_SPEED (float/int): Movement speeds for various entities.
+SHOOT_COOLDOWN (int): Frames between shots (20 frames).
+ATTACK_COOLDOWN (float): Seconds between companion attacks (1 second).
+Various color constants (e.g., BROWN, WHITE, RED): RGB tuples for drawing.
+Why It’s Important: config.py centralizes constants, making it easy to tweak game settings (e.g., change the window size, adjust speeds).
+
+3. Tips for Learning and Building the Game
+Since you’re new to coding and want to learn while making a badass game, I’ll share some strategies to balance learning with fun, and optimize our collaboration using AI.
+
+Learning Tips
+Start with Small Experiments:
+Pick one class or mechanic to focus on (e.g., the Player class). Try modifying something simple, like increasing PLAYER_SPEED in config.py to see how it affects movement.
+Add a small feature, like a new item in chest.py (e.g., a "speed_boost" that increases self.speed for 10 seconds). This will help you understand how classes interact.
+Use the Reference Guide:
+Refer to the guide above to understand what each method does. For example, if you want to add a new weapon, look at Player.shoot_projectile() and Projectile to see how projectiles are created and updated.
+Focus on one class at a time. Start with Player, then move to Enemy, and so on.
+Debug with Print Statements:
+Add print() statements to see what’s happening. For example, in Player.move(), add print(self.direction) to see how the player’s direction changes as you move.
+This will help you understand the flow of the code and debug issues.
+Break Down Complex Methods:
+Some methods, like Game.update(), do a lot. Break them into smaller pieces in your mind. For example, Game.update() updates the player, then companions, then enemies, etc. Focus on one section at a time.
+Learn Pygame Basics:
+Since the game uses Pygame, understanding its core concepts will help. Focus on:
+pygame.Rect: Used for positions and collisions (e.g., self.rect in Player).
+pygame.Surface: Used for drawing (e.g., self.screen in Game).
+pygame.event.get(): Used for input handling (e.g., in Game.handle_input()).
+Watch a short Pygame tutorial (e.g., on YouTube) to get familiar with these concepts.
+Don’t Overwhelm Yourself:
+You don’t need to understand every line of code right away. Focus on the big picture (e.g., how the Game class runs the game loop) and dive into details as needed.
+If something feels too technical (e.g., sprite sheet animation in Enemy), ask me to explain it in simpler terms or focus on a different part of the game.

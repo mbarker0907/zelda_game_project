@@ -1,29 +1,41 @@
 import pygame
 import os
 import random
-from chest import Chest
+from config import *
 
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+class Chest:
+    def __init__(self, x, y):
+        self.rect = pygame.Rect(x, y, TILE_SIZE, TILE_SIZE)
+        self.is_open = False
+        self.sprite = pygame.image.load(os.path.join(ASSETS_PATH, "objects/chest_closed.png")).convert_alpha()
+        self.sprite_open = pygame.image.load(os.path.join(ASSETS_PATH, "objects/chest_open.png")).convert_alpha()
+        self.sprite = pygame.transform.scale(self.sprite, (TILE_SIZE, TILE_SIZE))
+        self.sprite_open = pygame.transform.scale(self.sprite_open, (TILE_SIZE, TILE_SIZE))
+
+    def open(self):
+        self.is_open = True
+
+    def draw(self, screen):
+        sprite = self.sprite_open if self.is_open else self.sprite
+        screen.blit(sprite, self.rect)
 
 class World:
-    # **Initialization**
-    def __init__(self, window_width, window_height, screen):
-        self.window_width = window_width
-        self.window_height = window_height
+    def __init__(self, screen):
         self.screen = screen
-        self.tile_size = 32
-        self.map_width = 30
-        self.map_height = 20
+        self.hud_height = 0
+        self.tile_size = TILE_SIZE
+        self.map_width = MAP_WIDTH
+        self.map_height = MAP_HEIGHT
         self.tiles = {
-            0: pygame.image.load(os.path.join(PROJECT_ROOT, "assets/tiles/grass.png")).convert_alpha(),
-            1: pygame.image.load(os.path.join(PROJECT_ROOT, "assets/tiles/wall.png")).convert_alpha(),
-            2: pygame.image.load(os.path.join(PROJECT_ROOT, "assets/tiles/door.png")).convert_alpha(),
-            3: pygame.image.load(os.path.join(PROJECT_ROOT, "assets/tiles/locked_door.png")).convert_alpha(),
-            4: pygame.image.load(os.path.join(PROJECT_ROOT, "assets/tiles/water.png")).convert_alpha(),
-            5: pygame.image.load(os.path.join(PROJECT_ROOT, "assets/tiles/tree.png")).convert_alpha(),
-            6: pygame.image.load(os.path.join(PROJECT_ROOT, "assets/tiles/bridge.png")).convert_alpha(),
-            7: pygame.image.load(os.path.join(PROJECT_ROOT, "assets/tiles/town_path.png")).convert_alpha(),
-            8: pygame.image.load(os.path.join(PROJECT_ROOT, "assets/tiles/building.png")).convert_alpha()
+            0: pygame.image.load(os.path.join(ASSETS_PATH, "tiles/grass.png")).convert_alpha(),
+            1: pygame.image.load(os.path.join(ASSETS_PATH, "tiles/wall.png")).convert_alpha(),
+            2: pygame.image.load(os.path.join(ASSETS_PATH, "tiles/door.png")).convert_alpha(),
+            3: pygame.image.load(os.path.join(ASSETS_PATH, "tiles/locked_door.png")).convert_alpha(),
+            4: pygame.image.load(os.path.join(ASSETS_PATH, "tiles/water.png")).convert_alpha(),
+            5: pygame.image.load(os.path.join(ASSETS_PATH, "tiles/tree.png")).convert_alpha(),
+            6: pygame.image.load(os.path.join(ASSETS_PATH, "tiles/bridge.png")).convert_alpha(),
+            7: pygame.image.load(os.path.join(ASSETS_PATH, "tiles/town_path.png")).convert_alpha(),
+            8: pygame.image.load(os.path.join(ASSETS_PATH, "tiles/building.png")).convert_alpha()
         }
         self.player = None
         for tile_type, tile in self.tiles.items():
@@ -32,9 +44,13 @@ class World:
         self.chests = []
         self.checkpoints = []
         self.gold_drops = []
-        self.enemy_projectiles = []  # Added for boss projectiles
-        # **ASSET REQUIRED**: Add sprite for gold coin drops
-        self.gold_sprite = pygame.image.load(os.path.join(PROJECT_ROOT, "assets/items/gold_coin.png")).convert_alpha()
+        self.item_drops = []
+        self.enemy_projectiles = []
+        self.gold_sprite = pygame.image.load(os.path.join(ASSETS_PATH, "items/gold_coin.png")).convert_alpha()
+        self.item_sprites = {
+            "bomb": pygame.image.load(os.path.join(ASSETS_PATH, "items/bomb.png")).convert_alpha(),
+            "ice_bolt": pygame.image.load(os.path.join(ASSETS_PATH, "items/ice_bolt.png")).convert_alpha()
+        }
         # Room 0: Town
         self.room0 = [
             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -50,7 +66,7 @@ class World:
             [1, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 1],
             [1, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 1],
             [1, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 1],
-            [1, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 1],
+            [1, 7, 7, 7, 7, 7, 7, 7, 7, 7, 1, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 1],
             [1, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 1],
             [1, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 1],
             [1, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 1],
@@ -111,109 +127,109 @@ class World:
         self.tile_map = self.rooms[self.current_room_index]
         self.chests = []
         self.offset_x = 0
-        self.offset_y = 0
+        self.offset_y = self.hud_height
         self.map_surface = pygame.Surface((self.map_width * self.tile_size, self.map_height * self.tile_size))
         self.minimap = pygame.Surface((self.map_width * 5, self.map_height * 5))
         self.explored = [[False for _ in range(self.map_width)] for _ in range(self.map_height)]
+        self.day_night_cycle = 0
+        self.day_night_speed = 0.001
+        self.is_night = False
         self.render_room()
-        self.render_minimap()
 
-    # **Generate Procedural Room**
     def generate_procedural_room(self):
         room = [[1 for _ in range(self.map_width)] for _ in range(self.map_height)]
-        # Fill with grass
-        for row in range(1, self.map_height - 1):
-            for col in range(1, self.map_width - 1):
-                room[row][col] = 0
-        # Add random obstacles (trees, water)
+        for y in range(1, self.map_height - 1):
+            for x in range(1, self.map_width - 1):
+                room[y][x] = 0
+        river_start_y = random.randint(5, self.map_height - 6)
+        for x in range(self.map_width):
+            for y in range(river_start_y, river_start_y + 3):
+                room[y][x] = 4  # Water
+        bridge_x = random.randint(5, self.map_width - 6)
+        for y in range(river_start_y, river_start_y + 3):
+            room[y][bridge_x] = 6  # Bridge
         for _ in range(10):
-            row = random.randint(1, self.map_height - 2)
-            col = random.randint(1, self.map_width - 2)
-            room[row][col] = random.choice([4, 5])
-        # Add door
-        room[7][1] = 2
+            tree_x = random.randint(1, self.map_width - 2)
+            tree_y = random.randint(1, self.map_height - 2)
+            if room[tree_y][tree_x] == 0:
+                room[tree_y][tree_x] = 5  # Tree
+        room[7][1] = 2  # Door to previous room
         return room
 
-    # **Initialize Room Objects**
-    def initialize_room_objects(self):
-        self.chests = []
-        self.checkpoints = []
-        if self.current_room_index == 1:
-            self.checkpoints.append({"rect": pygame.Rect(5 * self.tile_size, 5 * self.tile_size, 32, 32)})
-        elif self.current_room_index == 2:
-            chest = Chest(20 * self.tile_size, 10 * self.tile_size)
-            self.chests.append(chest)
-
-    # **Render Room**
     def render_room(self):
-        for row in range(self.map_height):
-            for col in range(self.map_width):
-                tile_type = self.tile_map[row][col]
-                tile = self.tiles[tile_type]
-                self.map_surface.blit(tile, (col * self.tile_size, row * self.tile_size))
+        self.map_surface.fill((0, 0, 0))
+        for y in range(self.map_height):
+            for x in range(self.map_width):
+                tile_type = self.tile_map[y][x]
+                self.map_surface.blit(self.tiles[tile_type], (x * self.tile_size, y * self.tile_size))
 
-    # **Render Minimap**
-    def render_minimap(self):
-        for row in range(self.map_height):
-            for col in range(self.map_width):
-                if self.explored[row][col]:
-                    tile_type = self.tile_map[row][col]
-                    color = (0, 255, 0) if tile_type == 0 else (100, 100, 100) if tile_type == 1 else (255, 0, 0)
-                    pygame.draw.rect(self.minimap, color, (col * 5, row * 5, 5, 5))
+    def render_minimap(self, enemies, npcs):
+        self.minimap.fill((0, 0, 0))
+        for y in range(self.map_height):
+            for x in range(self.map_width):
+                if self.explored[y][x]:
+                    tile_type = self.tile_map[y][x]
+                    color = (0, 255, 0) if tile_type == 0 else (128, 128, 128) if tile_type == 1 else (255, 255, 0) if tile_type in [2, 3] else (0, 0, 255) if tile_type == 4 else (0, 128, 0)
+                    pygame.draw.rect(self.minimap, color, (x * 5, y * 5, 5, 5))
+        if self.player:
+            player_x = int(self.player.rect.centerx // self.tile_size)
+            player_y = int((self.player.rect.centery - self.hud_height) // self.tile_size)
+            pygame.draw.rect(self.minimap, (255, 0, 0), (player_x * 5, player_y * 5, 5, 5))
+            self.explored[player_y][player_x] = True
+        for enemy in enemies:
+            enemy_x = int(enemy.rect.centerx // self.tile_size)
+            enemy_y = int((enemy.rect.centery - self.hud_height) // self.tile_size)
+            pygame.draw.rect(self.minimap, (255, 0, 255), (enemy_x * 5, enemy_y * 5, 5, 5))
+        for npc in npcs:
+            npc_x = int(npc.rect.centerx // self.tile_size)
+            npc_y = int((npc.rect.centery - self.hud_height) // self.tile_size)
+            pygame.draw.rect(self.minimap, (0, 255, 255), (npc_x * 5, npc_y * 5, 5, 5))
 
-    # **Draw World**
-    def draw(self, screen):
+    def draw(self, screen, enemies, npcs):
         screen.blit(self.map_surface, (self.offset_x, self.offset_y))
-        # Update and draw minimap
-        player_row = int(self.player.rect.centery // self.tile_size)
-        player_col = int(self.player.rect.centerx // self.tile_size)
-        if 0 <= player_row < self.map_height and 0 <= player_col < self.map_width:
-            self.explored[player_row][player_col] = True
-        self.render_minimap()
-        screen.blit(self.minimap, (self.window_width - self.map_width * 5 - 10, 10))
+        for chest in self.chests:
+            chest.draw(screen)
+        self.render_minimap(enemies, npcs)
+        screen.blit(pygame.transform.scale(self.minimap, (self.map_width * 5, self.map_height * 5)), (WINDOW_WIDTH - self.map_width * 5 - 10, self.hud_height + 10))
+        if self.is_night:
+            overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT - self.hud_height))
+            overlay.fill((0, 0, 50))
+            overlay.set_alpha(100)
+            screen.blit(overlay, (0, self.hud_height))
+        else:
+            overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT - self.hud_height))
+            overlay.fill((255, 255, 200))
+            overlay.set_alpha(50)
+            screen.blit(overlay, (0, self.hud_height))
 
-    # **Get Tile Type**
+    def update(self):
+        self.day_night_cycle += self.day_night_speed
+        if self.day_night_cycle >= 1:
+            self.day_night_cycle = 0
+        self.is_night = self.day_night_cycle > 0.5
+
+    def is_wall(self, x, y):
+        tile_x = int(x // self.tile_size)
+        tile_y = int((y - self.hud_height) // self.tile_size)
+        if 0 <= tile_x < self.map_width and 0 <= tile_y < self.map_height:
+            return self.tile_map[tile_y][tile_x] in [1, 4, 5, 8]
+        return True
+
     def get_tile_type(self, x, y):
-        col = int(x // self.tile_size)
-        row = int(y // self.tile_size)
-        if 0 <= row < self.map_height and 0 <= col < self.map_width:
-            return self.tile_map[row][col]
+        tile_x = int(x // self.tile_size)
+        tile_y = int((y - self.hud_height) // self.tile_size)
+        if 0 <= tile_x < self.map_width and 0 <= tile_y < self.map_height:
+            return self.tile_map[tile_y][tile_x]
         return 1
 
-    # **Check Wall**
-    def is_wall(self, x, y):
-        tile_type = self.get_tile_type(x, y)
-        return tile_type in [1, 3, 4, 5, 8]  # Buildings are also walls
-
-    # **Switch Room**
-    def switch_room(self, new_room_index):
-        self.current_room_index = new_room_index
+    def switch_room(self, room_index):
+        self.current_room_index = room_index
         self.tile_map = self.rooms[self.current_room_index]
         self.explored = [[False for _ in range(self.map_width)] for _ in range(self.map_height)]
         self.render_room()
-        self.initialize_room_objects()
-        # Fade out
-        fade_surface = pygame.Surface((self.window_width, self.window_height))
-        fade_surface.fill((0, 0, 0))
-        for alpha in range(0, 255, 10):
-            fade_surface.set_alpha(alpha)
-            self.screen.blit(fade_surface, (0, 0))
-            pygame.display.flip()
-            pygame.time.wait(10)
-        # Fade in
-        for alpha in range(255, 0, -10):
-            fade_surface.set_alpha(alpha)
-            self.screen.blit(fade_surface, (0, 0))
-            pygame.display.flip()
-            pygame.time.wait(10)
 
-    # **Set Tile**
-    def set_tile(self, row, col, tile_type):
-        if 0 <= row < self.map_height and 0 <= col < self.map_width:
-            self.tile_map[row][col] = tile_type
-            self.render_room()
-
-    # **Drop Gold**
     def drop_gold(self, x, y, amount):
-        rect = pygame.Rect(x, y, 16, 16)
-        self.gold_drops.append({"rect": rect, "amount": amount, "sprite": self.gold_sprite})
+        self.gold_drops.append({"rect": pygame.Rect(x - 8, y - 8, 16, 16), "amount": amount})
+
+    def drop_item(self, x, y, item_type):
+        self.item_drops.append({"rect": pygame.Rect(x - 8, y - 8, 16, 16), "type": item_type})

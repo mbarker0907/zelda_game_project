@@ -1,15 +1,15 @@
+# enemy.py
 import pygame
 import os
 import random
+from config import *
 from projectile import Projectile
-
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 class Enemy:
     def __init__(self, x, y, enemy_type, world):
         self.world = world
         self.type = enemy_type
-        self.speed = 1 if enemy_type != "boss" else 0.5
+        self.speed = ENEMY_SPEED if enemy_type != "boss" else BOSS_SPEED
         self.health = 2 if enemy_type != "boss" else 10
         self.attack = 1
         self.direction = random.choice(["left", "right", "up", "down"])
@@ -18,32 +18,34 @@ class Enemy:
         self.current_frame = 0
         self.is_dying = False
         self.death_timer = 0
+        self.frozen = False
+        self.freeze_timer = 0
+        self.damage_flash = 0  # For visual feedback
 
-        # Define sprite sheet properties for each enemy type
         sprite_configs = {
             "archer": {
-                "path": "assets/enemies/archer.png",
+                "path": "enemies/archer.png",
                 "dimensions": (144, 192),
                 "frame_size": (48, 48),
                 "directions": ["down", "left", "right", "up"],
                 "frames_per_direction": 3
             },
             "octorok": {
-                "path": "assets/enemies/octorok.png",
+                "path": "enemies/octorok.png",
                 "dimensions": (144, 192),
                 "frame_size": (48, 48),
                 "directions": ["down", "left", "right", "up"],
                 "frames_per_direction": 3
             },
             "bat": {
-                "path": "assets/enemies/bat.png",
+                "path": "enemies/bat.png",
                 "dimensions": (128, 96),
                 "frame_size": (32, 32),
                 "directions": ["down"],
                 "frames_per_direction": 4
             },
             "boss": {
-                "path": "assets/enemies/boss.png",
+                "path": "enemies/boss.png",
                 "dimensions": (216, 384),
                 "frame_size": (72, 96),
                 "directions": ["down", "left", "right", "up"],
@@ -51,7 +53,6 @@ class Enemy:
             }
         }
 
-        # Load sprite sheet based on enemy type
         config = sprite_configs[enemy_type]
         sprite_path = config["path"]
         expected_dimensions = config["dimensions"]
@@ -59,16 +60,13 @@ class Enemy:
         self.directions = config["directions"]
         self.frames_per_direction = config["frames_per_direction"]
 
-        # Set rect size based on frame size
-        self.rect = pygame.Rect(x, y, self.frame_size[0], self.frame_size[1])
+        self.rect = pygame.Rect(x, y + self.world.hud_height, self.frame_size[0], self.frame_size[1])
 
-        # Load and validate sprite sheet
-        self.sprite_sheet = pygame.image.load(os.path.join(PROJECT_ROOT, sprite_path)).convert_alpha()
+        self.sprite_sheet = pygame.image.load(os.path.join(ASSETS_PATH, sprite_path)).convert_alpha()
         actual_dimensions = (self.sprite_sheet.get_width(), self.sprite_sheet.get_height())
         if actual_dimensions != expected_dimensions:
             raise ValueError(f"{self.type} sprite sheet dimensions are {actual_dimensions}, expected {expected_dimensions}")
 
-        # Split into frames
         self.frames = {direction: [] for direction in self.directions}
         frame_width, frame_height = self.frame_size
         for row, direction in enumerate(self.directions):
@@ -76,70 +74,97 @@ class Enemy:
                 frame = self.sprite_sheet.subsurface((col * frame_width, row * frame_height, frame_width, frame_height))
                 self.frames[direction].append(frame)
 
-        # Load boss projectile sprites (only for boss)
         if self.type == "boss":
-            boss_projectile_sheet = pygame.image.load(os.path.join(PROJECT_ROOT, "assets/projectiles/boss_projectile.png")).convert_alpha()
-            # Assuming the sprite sheet is 128x32 with 4 frames of 32x32 each
+            boss_projectile_sheet = pygame.image.load(os.path.join(ASSETS_PATH, "projectiles/fireball_splash_sheet_final.png")).convert_alpha()
             self.boss_projectile_sprites = [boss_projectile_sheet.subsurface((i * 32, 0, 32, 32)) for i in range(4)]
+            self.boss_explosion_sprites = [boss_projectile_sheet.subsurface((i * 32 + 128, 0, 32, 32)) for i in range(4)]
+        self.shoot_cooldown = 0
 
-    def update(self, window_width, window_height, projectiles):
+    def update(self, window_width, window_height, player_projectiles):
         if self.is_dying:
-            self.death_timer += 1
-            if self.death_timer > 30:
-                self.world.drop_gold(self.rect.x, self.rect.y, random.randint(20, 100))
-                return
-        for projectile in projectiles:
-            if self.rect.colliderect(projectile.rect):
-                damage = projectile.power
-                self.health -= damage
-                self.world.player.experience += 10
-                projectiles.remove(projectile)
+            self.death_timer -= 1 / 60
+            if self.death_timer <= 0:
+                self.health = 0
+            return
+
+        if self.frozen:
+            self.freeze_timer -= 1 / 60
+            if self.freeze_timer <= 0:
+                self.frozen = False
+            return
+
+        if self.damage_flash > 0:
+            self.damage_flash -= 1
+
+        if self.type == "boss":
+            self.shoot_cooldown -= 1 / 60
+            if self.shoot_cooldown <= 0:
+                for direction in ["left", "right", "up", "down"]:
+                    if direction == "left":
+                        vx, vy = -5, 0
+                    elif direction == "right":
+                        vx, vy = 5, 0
+                    elif direction == "up":
+                        vx, vy = 0, -5
+                    elif direction == "down":
+                        vx, vy = 0, 5
+                    projectile = Projectile(self.rect.centerx, self.rect.centery, (vx, vy), "fireball",
+                                           self.boss_projectile_sprites, self.boss_explosion_sprites, power=1)
+                    self.world.enemy_projectiles.append(projectile)
+                self.shoot_cooldown = 2
+
+        for projectile in player_projectiles:
+            if self.rect.colliderect(projectile.rect) and not self.is_dying:
+                self.health -= projectile.power
+                self.damage_flash = 10  # Flash for 10 frames
+                if projectile.weapon_type == "ice_bolt":
+                    self.frozen = True
+                    self.freeze_timer = 2  # Freeze for 2 seconds
+                player_projectiles.remove(projectile)
                 if self.health <= 0:
                     self.is_dying = True
-        if not self.is_dying:
-            dx = self.world.player.rect.centerx - self.rect.centerx
-            dy = self.world.player.rect.centery - self.rect.centery
-            dist = (dx ** 2 + dy ** 2) ** 0.5
-            if dist > 0:
-                dx, dy = dx / dist, dy / dist
-                new_x = self.rect.x + dx * self.speed
-                new_y = self.rect.y + dy * self.speed
-                new_rect = pygame.Rect(new_x, new_y, self.rect.width, self.rect.height)
-                if 0 <= new_x <= window_width - self.rect.width and 0 <= new_y <= window_height - self.rect.height:
-                    if not self.world.is_wall(new_rect.centerx, new_rect.centery):
-                        self.rect.x = new_x
-                        self.rect.y = new_y
-            if self.type != "bat":
-                if abs(dx) > abs(dy):
-                    self.direction = "right" if dx > 0 else "left"
-                else:
-                    self.direction = "down" if dy > 0 else "up"
-                if self.direction not in self.directions:
-                    self.direction = "down"
+                    self.death_timer = 0.5
+                    self.world.drop_gold(self.rect.centerx, self.rect.centery - self.world.hud_height, random.randint(5, 10))
+                    if random.random() < 0.1:  # 10% chance to drop an item
+                        self.world.drop_item(self.rect.centerx, self.rect.centery - self.world.hud_height, "bomb")
+                    break
+
+        if random.random() < 0.02:
+            self.direction = random.choice(self.directions)
+
+        dx, dy = 0, 0
+        if self.direction == "left":
+            dx = -self.speed
+        elif self.direction == "right":
+            dx = self.speed
+        elif self.direction == "up":
+            dy = -self.speed
+        elif self.direction == "down":
+            dy = self.speed
+
+        new_x = self.rect.x + dx
+        new_y = self.rect.y + dy
+        new_rect = pygame.Rect(new_x, new_y, self.rect.width, self.rect.height)
+
+        adjusted_window_height = window_height - self.world.hud_height
+        if (0 <= new_x <= window_width - self.rect.width and
+            self.world.hud_height <= new_y <= window_height - self.rect.height and
+            not self.world.is_wall(new_rect.centerx, new_rect.centery)):
+            self.rect.x = new_x
+            self.rect.y = new_y
             self.animation_counter += self.animation_speed
             if self.animation_counter >= 1:
                 self.current_frame = (self.current_frame + 1) % self.frames_per_direction
                 self.animation_counter = 0
-            if self.type == "boss" and random.random() < 0.05:
-                self.shoot_projectile()
-
-    def shoot_projectile(self):
-        dx = self.world.player.rect.centerx - self.rect.centerx
-        dy = self.world.player.rect.centery - self.rect.centery
-        dist = (dx ** 2 + dy ** 2) ** 0.5
-        if dist > 0:
-            dx, dy = dx / dist, dy / dist
-            # Use the pre-loaded boss projectile sprites
-            projectile = Projectile(self.rect.centerx, self.rect.centery, dx * 5, dy * 5, self.boss_projectile_sprites, [], "boss_projectile", 2)
-            if hasattr(self.world, 'enemy_projectiles'):
-                self.world.enemy_projectiles.append(projectile)
-            else:
-                print("Warning: self.world.enemy_projectiles not found. Boss projectile not added.")
-
-    def draw(self, screen):
-        if not self.is_dying:
-            direction = "down" if self.type == "bat" else self.direction
-            screen.blit(self.frames[direction][self.current_frame], self.rect)
 
     def is_dead(self):
-        return self.is_dying and self.death_timer > 30
+        return self.health <= 0 and not self.is_dying
+
+    def draw(self, screen):
+        direction = self.direction if self.direction in self.frames else self.directions[0]
+        frame = self.frames[direction][self.current_frame].copy()
+        if self.damage_flash > 0:
+            frame.fill((255, 0, 0, 128), special_flags=pygame.BLEND_RGBA_ADD)
+        if self.frozen:
+            frame.fill((0, 0, 255, 64), special_flags=pygame.BLEND_RGBA_ADD)
+        screen.blit(frame, self.rect)

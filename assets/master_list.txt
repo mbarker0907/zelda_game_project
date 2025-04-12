@@ -1,0 +1,101 @@
+The game relies on various assets (images, audio files) to function properly. Below is a comprehensive list of all assets referenced in the code, their expected sizes (based on the sprite sheets and game logic), and any additional setup you might need to do manually.
+
+Directory Structure
+You’ll need to create an assets folder in your project directory with the following subfolders:
+
+assets/tiles/ (for map tiles)
+assets/player/ (for the player sprite)
+assets/enemies/ (for enemy sprites)
+assets/companions/ (for companion sprites)
+assets/npcs/ (for NPC sprites)
+assets/objects/ (for objects like bushes and chests)
+assets/items/ (for items like gold coins, bombs, etc.)
+assets/projectiles/ (for projectile sprites)
+assets/ui/ (for HUD elements)
+assets/audio/ (for sound effects and music)
+Assets List
+Here’s the full list of assets, their expected sizes, and notes on their usage:
+
+Tiles (assets/tiles/)
+These are used for the game world map in world.py.
+
+grass.png: 32x32 pixels (Tile type 0 - walkable ground)
+wall.png: 32x32 pixels (Tile type 1 - impassable wall)
+door.png: 32x32 pixels (Tile type 2 - door to transition rooms)
+locked_door.png: 32x32 pixels (Tile type 3 - locked door, becomes a regular door when unlocked)
+water.png: 32x32 pixels (Tile type 4 - impassable water)
+tree.png: 32x32 pixels (Tile type 5 - impassable tree)
+bridge.png: 32x32 pixels (Tile type 6 - walkable bridge)
+town_path.png: 32x32 pixels (Tile type 7 - walkable path in the town)
+building.png: 32x32 pixels (Tile type 8 - impassable building)
+Notes: Each tile must be exactly 32x32 pixels (TILE_SIZE from config.py). If they’re not, the game will scale them, but this might cause visual issues. Use a simple art style (e.g., pixel art) to match the game’s aesthetic.
+
+Player (assets/player/)
+player.png: 24x24 pixels (The player’s sprite, matches the player’s rect size in player.py)
+Notes: The player sprite is scaled to 24x24 pixels in player.py. You can create a simple character sprite (e.g., a knight, adventurer, or dog) to represent the player.
+
+Enemies (assets/enemies/)
+These are sprite sheets for enemies in enemy.py.
+
+archer.png: 144x192 pixels (3 frames per direction, 4 directions: down, left, right, up; each frame is 48x48 pixels)
+octorok.png: 144x192 pixels (3 frames per direction, 4 directions: down, left, right, up; each frame is 48x48 pixels)
+bat.png: 128x96 pixels (4 frames, 1 direction: down; each frame is 32x32 pixels)
+boss.png: 216x384 pixels (3 frames per direction, 4 directions: down, left, right, up; each frame is 72x96 pixels)
+Notes: Each sprite sheet must match the dimensions specified in enemy.py, or you’ll get a ValueError. For example, the archer sprite sheet has 3 frames per direction (for animation) across 4 directions, so it’s 3 frames wide (144 pixels) and 4 directions tall (192 pixels). You can use a tool like Aseprite or Piskel to create these sprite sheets.
+
+Companions (assets/companions/)
+These are sprite sheets for the cat and dog in companion.py.
+
+cat.png: 96x128 pixels (3 frames per direction, 4 directions: down, left, right, up; each frame is 32x32 pixels)
+dog.png: 96x128 pixels (3 frames per direction, 4 directions: down, left, right, up; each frame is 32x32 pixels)
+Notes: Similar to enemies, these sprite sheets must match the dimensions in companion.py. Each frame is 32x32 pixels, with 3 frames per direction for animation.
+
+NPCs (assets/npcs/)
+shopkeeper.png: 32x32 pixels (A single sprite for the shopkeeper NPC)
+quest_giver.png: 32x32 pixels (A single sprite for the quest giver NPC)
+Notes: These are simple static sprites, so no animation is needed. Make them visually distinct (e.g., the shopkeeper could have a hat, the quest giver a book).
+
+Objects (assets/objects/)
+bush.png: 32x32 pixels (A bush sprite that can be destroyed)
+chest.png: 32x32 pixels (A closed chest sprite)
+chest_open.png: 32x32 pixels (An open chest sprite)
+Notes: The bush and chest sprites should match the rect size in bush.py and chest.py (32x32 pixels). The chest should have two states: closed and open.
+
+Items (assets/items/)
+gold_coin.png: 16x16 pixels (A gold coin sprite for gold drops)
+bomb.png: 16x16 pixels (A bomb item sprite for enemy drops)
+ice_bolt.png: 16x16 pixels (An ice bolt item sprite for enemy drops or shop purchases)
+Notes: These are smaller sprites (16x16 pixels) to represent items on the ground. They’re used in world.py for gold and item drops.
+
+Projectiles (assets/projectiles/)
+fireball_splash_sheet_final.png: 256x32 pixels (8 frames total: 4 frames for the fireball animation, 4 frames for the explosion; each frame is 32x32 pixels)
+Notes: This sprite sheet is used for the boss’s fireball projectiles in enemy.py. The first 4 frames (0-127 pixels) are the fireball animation, and the last 4 frames (128-255 pixels) are the explosion animation. Each frame must be 32x32 pixels.
+
+UI (assets/ui/)
+heart.png: 16x16 pixels (A heart sprite for the player’s health in the HUD)
+key.png: 16x16 pixels (A key sprite for the key count in the HUD)
+gold.png: 16x16 pixels (A gold icon for the gold count in the HUD)
+ice_bolt_icon.png: 16x16 pixels (An icon for the ice bolt in the inventory)
+bomb_icon.png: 16x16 pixels (An icon for the bomb in the inventory)
+Notes: These are small icons for the HUD. They should be simple and clear (e.g., a red heart, a golden key). The ice_bolt_icon.png and bomb_icon.png are used to display inventory items in hud.py.
+
+Audio (assets/audio/)
+background_music.mp3: Background music for the game (any length, loops in main.py)
+hit.wav: Sound effect for when the player or enemies take damage (short, e.g., 0.5-1 second)
+shoot.wav: Sound effect for when the player shoots a projectile (short, e.g., 0.5-1 second)
+gameover.wav: Sound effect for when the player dies (e.g., 1-2 seconds)
+Notes: The audio files don’t have specific size requirements, but keep them lightweight (e.g., use MP3 for music, WAV for sound effects). You can find free audio assets on sites like OpenGameArt.org or Freesound.org.
+
+Additional Setup
+Create the Directory Structure:
+Make sure the assets folder and its subfolders are in the same directory as your Python scripts.
+The PROJECT_ROOT and ASSETS_PATH in config.py assume the assets folder is one level below the project root. If your structure is different, adjust the paths in config.py.
+Ensure File Formats:
+All image files should be PNG with transparency (alpha channel) enabled, as the game uses .convert_alpha() in Pygame.
+Audio files should be MP3 for music and WAV for sound effects, as specified.
+Test the Assets:
+Run the game after adding the assets to ensure they load correctly. If an asset is missing or the wrong size, you’ll get an error (e.g., FileNotFoundError or ValueError for sprite sheets).
+If you can’t create the assets right away, you can use placeholder images (e.g., colored rectangles) to test the game. For example, a 32x32 red square for grass.png.
+Optional: Add Placeholder Assets:
+If you don’t have art skills, you can use free assets from sites like OpenGameArt.org, itch.io, or Kenney.nl. Search for “pixel art tileset” or “pixel art characters” to find assets that match the game’s style.
+For audio, Freesound.org has free sound effects (e.g., search for “hit sound”, “shoot sound”).
